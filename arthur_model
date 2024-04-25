@@ -1,0 +1,632 @@
+rm(list=ls())
+
+library(readxl)
+library(dplyr)
+library(openxlsx)
+#library(tidyr)
+#library(zoo)
+
+setwd('C:\\Users\\user\\Downloads')
+
+"导入excel方式1：读取特定工作表"
+wb <- loadWorkbook("Fama-French五因子數值.xlsx")
+sheet_names <- names(wb)
+data_fama_french <- read.xlsx(wb, sheet = 1) 
+
+wb <- loadWorkbook("每股股利 S_P500 all 整合(控制變量).xlsx")
+sheet_names <- names(wb)
+data_dividend <- read.xlsx(wb, sheet = 1) 
+
+wb <- loadWorkbook("負債權益比(控制變量).xlsx") 
+sheet_names <- names(wb)
+data_debt_ratio <- read.xlsx(wb, sheet = 1) 
+
+
+wb <- loadWorkbook("市值原值(控制變量).xlsx") 
+sheet_names <- names(wb)
+data_marketcap <- read.xlsx(wb, sheet = 1) 
+
+wb <- loadWorkbook("SP500EPS彙總.xlsx") 
+sheet_names <- names(wb)
+data_eps <- read.xlsx(wb, sheet = 1) 
+
+wb <- loadWorkbook("SP500ROA彙總.xlsx") 
+sheet_names <- names(wb)
+data_roa <- read.xlsx(wb, sheet = 1) 
+########################################################################################################################################
+#rawdata
+path <- setwd('C:\\Users\\user\\Downloads\\rawdata')
+wb <- loadWorkbook("ESG__data stream.xlsx") 
+sheet_names <- names(wb)
+rawdata_esg_stream_e <- read.xlsx(wb, sheet = 1) 
+rawdata_esg_stream_e <- rawdata_esg_stream_e[,c(2,5:ncol(rawdata_esg_stream_e))]
+rawdata_esg_stream_s <- read.xlsx(wb, sheet = 2) 
+rawdata_esg_stream_s <- rawdata_esg_stream_e[,c(2,5:ncol(rawdata_esg_stream_e))]
+rawdata_esg_stream_g <- read.xlsx(wb, sheet = 3) 
+rawdata_esg_stream_g <- rawdata_esg_stream_e[,c(2,5:ncol(rawdata_esg_stream_e))]
+
+
+wb <- loadWorkbook("ESGdata(自變數).xlsx") 
+sheet_names <- names(wb)
+rawdata_esg_e <- read.xlsx(wb, sheet = 1) 
+rawdata_esg_s <- read.xlsx(wb, sheet = 2)
+rawdata_esg_g <- read.xlsx(wb, sheet = 3)
+
+wb <- loadWorkbook("ROE(應變量).xlsx") 
+sheet_names <- names(wb)
+rawdata_ROE <- read.xlsx(wb, sheet = 1)
+
+########################################################################################################################################
+#模型是ROE（應變量）= E、S、G分數（自變數） 市值（控制變量） 市值取log（控制變量） 每股股利（控制變量） 負債權益比（控制變量） fama五因子（控制變量）
+data_marketcap_log <- cbind(data_marketcap[,1], log(data_marketcap[,2:ncol(data_marketcap)]))
+intersection <- intersect(intersect(rawdata_esg_e[,1], rawdata_esg_s[,1]), rawdata_esg_g[,1])
+
+#roa、roe、eps分三次当作y值
+data_roe <- rawdata_ROE
+rm(rawdata_ROE)
+##y變量
+data_roe <- subset(data_roe, data_roe[, 1] %in% intersection) %>% as.data.frame()
+data_roa <- subset(data_roa, data_roa[, 1] %in% intersection) %>% as.data.frame()
+data_eps <- subset(data_eps, data_eps[, 1] %in% intersection) %>% as.data.frame()
+
+#x
+#esg
+data_esg_e <- rawdata_esg_e %>% as.data.frame()
+data_esg_s <- subset(rawdata_esg_s, rawdata_esg_s[, 1] %in% intersection) %>% as.data.frame()
+data_esg_g <- subset(rawdata_esg_g, rawdata_esg_g[, 1] %in% intersection) %>% as.data.frame()
+
+#控制變數
+#marketcap and logmarcap
+data_marketcap <- subset(data_marketcap, data_marketcap[, 1] %in% intersection) %>% as.data.frame()
+data_marketcap <- data_marketcap[,c(1,4:(ncol(data_marketcap)-1))]
+data_marketcap_log <- subset(data_marketcap_log, data_marketcap_log[, 1] %in% intersection) %>% as.data.frame()
+data_marketcap_log <- data_marketcap_log[,c(1,4:(ncol(data_marketcap_log)-1))]
+
+data_dividend <- subset(data_dividend, data_dividend[, 1] %in% intersection) %>% as.data.frame()
+data_debt_ratio <- subset(data_debt_ratio, data_debt_ratio[, 1] %in% intersection) %>% as.data.frame()
+
+data_fama_french <- t(data_fama_french)
+data_fama_french <- data_fama_french[2:nrow(data_fama_french),]
+colnam <- colnames(data_roe)
+colnam <- colnam[-1]
+colnames(data_fama_french) <- colnam
+data_fama_french <- as.data.frame(data_fama_french)
+
+list_roe <- list(data_roe[,2:ncol(data_roe)] %>% t(), 
+                 data_esg_e[,2:ncol(data_esg_e)] %>% t(), 
+                 data_esg_s[,2:ncol(data_esg_s)] %>% t(), 
+                 data_esg_g[,2:ncol(data_esg_g)] %>% t(),
+                 data_marketcap[,2:ncol(data_marketcap)] %>% t(), 
+                 data_marketcap_log[,2:ncol(data_marketcap_log)] %>% t(), 
+                 data_dividend[,2:ncol(data_dividend)] %>% t(), 
+                 data_debt_ratio[,2:ncol(data_debt_ratio)] %>% t(), 
+                 data_fama_french %>% t())
+names(list_roe) <- c("roe","esg_e", "esg_s", "esg_g", "marketcap", "marketcap_log", "dividend", "debt_ratio", "fama_french")
+
+setwd("C:/Users/user/Downloads")
+write.xlsx(data_roe, "roe.xlsx", digits = 2)
+write.xlsx(data_esg_e, "esg_e.xlsx", digits = 2)
+write.xlsx(data_esg_s, "esg_s.xlsx", digits = 2)
+write.xlsx(data_esg_g, "esg_g.xlsx", digits = 2)
+write.xlsx(data_marketcap, "marketcap.xlsx", digits = 2)
+write.xlsx(data_marketcap_log, "marketcap_log.xlsx", digits = 2)
+write.xlsx(data_dividend, "dividend.xlsx", digits = 2)
+write.xlsx(data_debt_ratio, "debt_ratio.xlsx", digits = 2)
+write.xlsx(data_fama_french, "fama_french.xlsx", digits = 2)
+
+########################################## y變數整理  ##############################################################################################
+data1_eps <- data.frame()
+for (i in 2:ncol(data_eps)) {
+  tem_colnames <- rep(colnames(data_eps[i]), nrow(data_eps)) %>% as.data.frame()
+  tem_companycode <- data_eps[,1] %>% as.data.frame()
+  tem <- data_eps[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  data1_eps <- rbind(data1_eps, tem1)
+}
+colnames(data1_eps) <- c("companycode", "year", "eps")
+
+data1_roa <- data.frame()
+for (i in 2:ncol(data_roa)) {
+  tem_colnames <- rep(colnames(data_roa[i]), nrow(data_roa)) %>% as.data.frame()
+  tem_companycode <- data_roa[,1] %>% as.data.frame()
+  tem <- data_roa[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  data1_roa <- rbind(data1_roa, tem1)
+}
+colnames(data1_roa) <- c("companycode", "year", "roa")
+
+data1_roe <- data.frame()
+for (i in 2:ncol(data_roe)) {
+  tem_colnames <- rep(colnames(data_roe[i]), nrow(data_roe)) %>% as.data.frame()
+  tem_companycode <- data_roe[,1] %>% as.data.frame()
+  tem <- data_roe[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  data1_roe <- rbind(data1_roe, tem1)
+}
+colnames(data1_roe) <- c("companycode", "year", "roe")
+########################################## 自變數整理  ##############################################################################################
+data1_esg_e <- data.frame()
+for (i in 2:ncol(data_esg_e)) {
+  tem_colnames <- rep(colnames(data_esg_e[i]), nrow(data_esg_e)) %>% as.data.frame()
+  tem_companycode <- data_esg_e[,1] %>% as.data.frame()
+  tem <- data_esg_e[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  data1_esg_e <- rbind(data1_esg_e, tem1)
+}
+colnames(data1_esg_e) <- c("companycode", "year", "esg_e")
+
+data1_esg_s <- data.frame()
+for (i in 2:ncol(data_esg_s)) {
+  tem_colnames <- rep(colnames(data_esg_s[i]), nrow(data_esg_s)) %>% as.data.frame()
+  tem_companycode <- data_esg_s[,1] %>% as.data.frame()
+  tem <- data_esg_s[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  data1_esg_s <- rbind(data1_esg_s, tem1)
+}
+colnames(data1_esg_s) <- c("companycode", "year", "esg_s")
+
+data1_esg_g <- data.frame()
+for (i in 2:ncol(data_esg_g)) {
+  tem_colnames <- rep(colnames(data_esg_g[i]), nrow(data_esg_g)) %>% as.data.frame()
+  tem_companycode <- data_esg_g[,1] %>% as.data.frame()
+  tem <- data_esg_g[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  data1_esg_g <- rbind(data1_esg_g, tem1)
+}
+colnames(data1_esg_g) <- c("companycode", "year", "esg_g")
+########################################## 自變數整理  ##############################################################################################
+data1_marketcap <- data.frame()
+for (i in 2:ncol(data_marketcap)) {
+  tem_colnames <- rep(colnames(data_marketcap[i]), nrow(data_marketcap)) %>% as.data.frame()
+  tem_companycode <- data_marketcap[,1] %>% as.data.frame()
+  tem <- data_marketcap[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  data1_marketcap <- rbind(data1_marketcap, tem1)
+}
+colnames(data1_marketcap) <- c("companycode", "year", "marketcap")
+
+data1_marketcap_log <- data.frame()
+for (i in 2:ncol(data_marketcap_log)) {
+  tem_colnames <- rep(colnames(data_marketcap_log[i]), nrow(data_marketcap_log)) %>% as.data.frame()
+  tem_companycode <- data_marketcap_log[,1] %>% as.data.frame()
+  tem <- data_marketcap_log[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  data1_marketcap_log <- rbind(data1_marketcap_log, tem1)
+}
+colnames(data1_marketcap_log) <- c("companycode", "year", "marketcap_log")
+
+data1_debt_ratio <- data.frame()
+for (i in 2:ncol(data_debt_ratio)) {
+  tem_colnames <- rep(colnames(data_debt_ratio[i]), nrow(data_debt_ratio)) %>% as.data.frame()
+  tem_companycode <- data_debt_ratio[,1] %>% as.data.frame()
+  tem <- data_debt_ratio[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  data1_debt_ratio <- rbind(data1_debt_ratio, tem1)
+}
+colnames(data1_debt_ratio) <- c("companycode", "year", "debt_ratio")
+
+data1_dividend <- data.frame()
+for (i in 2:ncol(data_dividend)) {
+  tem_colnames <- rep(colnames(data_dividend[i]), nrow(data_dividend)) %>% as.data.frame()
+  tem_companycode <- data_dividend[,1] %>% as.data.frame()
+  tem <- data_dividend[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  data1_dividend <- rbind(data1_dividend, tem1)
+}
+colnames(data1_dividend) <- c("companycode", "year", "dividend")
+
+alldata <- cbind(data1_roa, data1_roe[,3], data1_eps[,3], data1_esg_e[,3], data1_esg_s[,3], data1_esg_g[,3], 
+                 data1_marketcap[,3], data1_marketcap_log[,3], data1_debt_ratio[,3], data1_dividend[,3])
+
+setwd('C:\\Users\\user\\Downloads')
+
+data1 <- read.csv("merged_df_final.csv")
+data1 <- data1[,c(2:ncol(data1))]
+data1 <- na.omit(data1)
+alldata <- cbind(alldata, data1[,c(10:14)])
+colnames(alldata) <- c("companycode", "year", "roa", "roe", "eps", "esg_e", "esg_s", "esg_g", "marketcap", "marketcap_log", 
+                       "debt_ratio", "dividend", "SMB", "HML", "RMW", "CMA", "Momentum")
+#去掉NA值的data
+alldata_without_na <- na.omit(alldata) 
+# 将 NA 值替换为 0的data
+alldata[is.na(alldata)] <- 0
+
+########################################## na轉0的data模型  ##############################################################################################
+##roe
+model_roe <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata)
+summary(model_roe)
+
+library(car)
+vif_roe <- vif(model_roe)
+print(vif_roe)
+'通常来说，VIF大于10表示存在较强的共线性，而VIF大于5则表示存在中等程度的共线性。'
+
+##roa
+model_roa <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata)
+summary(model_roe)
+vif_roa <- vif(model_roa)
+print(vif_roa)
+
+##eps
+model_eps <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata)
+summary(model_eps)
+vif_eps <- vif(model_eps)
+print(vif_eps)
+
+library(stargazer)
+
+sink("model_arthur.txt")
+bind_model <- stargazer(model_roe, model_roa, model_eps,
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+sink("vif_arthur.txt")
+vif_eps <- vif(model_eps)
+'通常来说，VIF大于10表示存在较强的共线性，而VIF大于5则表示存在中等程度的共线性。'
+sink()
+########################################## 去掉na的data模型  ##############################################################################################
+##roe
+model_roe2 <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+summary(model_roe2)
+
+##granger test
+library(lmtest)
+esg <- alldata$esg_e+alldata$esg_s+alldata$esg_g
+data_esg <- cbind(alldata[,c(1:5)], esg) %>% as.data.frame()
+
+#有bug
+'library(tseries)
+alldata_without_na$year <- alldata_without_na(data$year)
+timeseries_data <- alldata_without_na[,c(1,3:17)]
+ts_data <- ts(alldata_without_na$your_variable, start = start_year, end = end_year, frequency = 1)'
+
+########################################## adf test  ##############################################################################################
+#only roa, roe, eps
+library(xts)
+library(vars) #for adf test
+library(tseries)
+
+alldata_without_na$year <- as.Date(paste(alldata_without_na$year, "-01-01", sep = ""), format = "%Y-%m-%d")
+adf_roa <- adf.test(alldata_without_na$roa)
+p_value_adf_roa <- adf_roa[["p.value"]]
+adf_roe <- adf.test(alldata_without_na$roe)
+p_value_adf_roe <- adf_roe[["p.value"]]
+adf_eps <- adf.test(alldata_without_na$eps)
+p_value_adf_eps <- adf_eps[["p.value"]]
+adf_esg <- adf.test(data_esg$esg)
+p_value_adf_esg <- adf_esg[["p.value"]]
+
+p_value_adf_data <- cbind(p_value_adf_roa, p_value_adf_roe, p_value_adf_eps, p_value_adf_esg)
+
+colnames(p_value_adf_data) <- c('ROA p value', 'ROE p value', 'EPS p value', 'ESG p value')
+write.csv(p_value_adf_data, "adf test.csv", row.names = FALSE)
+
+########################################## granger test  ##############################################################################################
+#roe
+library(car)
+'通常来说，VIF大于10表示存在较强的共线性，而VIF大于5则表示存在中等程度的共线性。'
+model_roe2 <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+summary(model_roe2)
+vif_roe2 <- vif(model_roe2)
+granger_roe <- grangertest(data_esg$roe~data_esg$esg, data = data_esg, order = 5)
+granger_roe
+aic_roe <- AIC(model_roe2)
+
+library(stargazer)
+##roa
+model_roa2 <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+summary(model_roa2)
+vif_roa2 <- vif(model_roa2)
+print(vif_roa2)
+granger_roa <- grangertest(data_esg$roa~data_esg$esg, data = data_esg, order = 3)
+granger_roa
+aic_roa <- AIC(model_roa2)
+aic_roa
+
+##eps
+model_eps2 <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+summary(model_eps2)
+vif_eps2 <- vif(model_eps2)
+print(vif_eps2)
+granger_eps <- grangertest(data_esg$eps~data_esg$esg, data = data_esg, order = 1)
+granger_eps
+aic_eps <- AIC(model_eps2)
+
+#adf test儲存
+aic_data <- cbind(aic_roe, aic_roa, aic_eps)
+
+colnames(aic_data) <- c('aic_roe', 'aic_roa', 'aic_eps')
+write.csv(aic_data, "aic test.csv", row.names = FALSE)
+
+sink("granger_test.txt")
+bind_model <- stargazer(granger_roe, granger_roa, granger_eps,
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+sink("model_without_na_arthur.txt")
+bind_model <- stargazer(model_roe2, model_roa2, model_eps2,
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+sink("vif_without_na_arthur.txt")
+vif_eps2
+sink()
+
+
+##双向因果检定
+granger_roe_reverse <- grangertest(data_esg$esg~data_esg$roe, data = data_esg, order = 9)
+granger_roe_reverse
+granger_roa_reverse <- grangertest(data_esg$esg~data_esg$roa, data = data_esg, order = 1)
+granger_roa_reverse
+granger_eps_reverse <- grangertest(data_esg$esg~data_esg$eps, data = data_esg, order = 1) #'都不顯著'
+granger_eps_reverse
+sink("granger_reverse.txt") 
+bind_model <- stargazer(granger_roe_reverse, granger_roa_reverse,  granger_eps_reverse,
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+################################################## 兩階段回歸和内生性檢驗 #####################################################################################
+library(AER)
+library(plm)
+model_roe2 <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+model_roa2 <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+model_eps2 <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+
+##roe
+first_roe <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+predicted_X <- fitted(first_roe)
+# 第二阶段回归（使用第一阶段的预测值）
+second_roe <- ivreg(roe~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+# 查看估计结果
+summary(second_roe)
+# 查看第二阶段回归的估计结果
+summary_second_roe <- summary(second_roe)
+# 提取所需的系数和标准误差
+coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
+
+# 重新计算 Hausman 统计量
+hausman_statistic_roe <- (coef(model_roe2) - coef_second_roe) / sqrt(abs(diag(vcov(model_roe2)) - diag(vcov(second_roe))))# 计算 P 值
+p_value_roe <- 2 * (1 - pnorm(abs(hausman_statistic_roe)))
+# 输出结果
+print(cbind(hausman_statistic_roe, p_value_roe))
+
+##roa
+first_roa <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+predicted_X <- fitted(first_roa)
+# 第二阶段回归（使用第一阶段的预测值）
+second_roa <- ivreg(roa~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+# 查看估计结果
+summary(second_roa)
+# 查看第二阶段回归的估计结果
+summary_second_roa <- summary(second_roa)
+# 提取所需的系数和标准误差
+coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
+
+# 重新计算 Hausman 统计量
+hausman_statistic_roa <- (coef(model_roa2) - coef_second_roa) / sqrt(abs(diag(vcov(model_roa2)) - diag(vcov(second_roa))))
+# 计算 P 值
+p_value_roa <- 2 * (1 - pnorm(abs(hausman_statistic_roa)))
+# 输出结果
+print(cbind(hausman_statistic_roa, p_value_roa))
+##eps
+first_eps <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+predicted_X <- fitted(first_eps)
+# 第二阶段回归（使用第一阶段的预测值）
+second_eps <- ivreg(eps~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+# 查看估计结果
+summary(second_eps)
+# 查看第二阶段回归的估计结果
+summary_second_eps <- summary(second_eps)
+# 提取所需的系数和标准误差
+coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
+
+# 重新计算 Hausman 统计量
+hausman_statistic_eps <- (coef(model_eps2) - coef_second_eps) / sqrt(abs(diag(vcov(model_eps2)) - diag(vcov(second_eps))))
+# 计算 P 值
+p_value_eps <- 2 * (1 - pnorm(abs(hausman_statistic_eps)))
+# 输出结果
+hausman_statistic_roe <- round(hausman_statistic_roe, 4)
+p_value_roe <- round(p_value_roe, 4)
+hausman_statistic_roa <- round(hausman_statistic_roa, 4)
+p_value_roa <- round(p_value_roa, 4)
+hausman_statistic_eps <- round(hausman_statistic_eps, 4)
+p_value_eps <- round(p_value_eps, 4)
+hausman_statistic <- cbind(hausman_statistic_roe, p_value_roe, hausman_statistic_roa, p_value_roa, hausman_statistic_eps, p_value_eps)
+print(hausman_statistic)
+sink("hausman_statistic.txt")
+bind_model <- stargazer(hausman_statistic, 
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+'如果p值大于0.1或0.05（具体取决于自己的设置的显著性），说没有内生性问题，小于则说明有内生性问题。'
+################################################## anova #####################################################################################
+'library(dplyr)
+# 将要滞后的变量复制到新数据框中，并删除最后一个观察值
+data_esg_lag1[[paste0(variable_name, "_lag1")]] <- c(data_esg[-1, variable_name], NA)
+
+# 将滞后的变量添加到新数据框中，并在最前面添加一个 NA 值
+data_esg_lag1[[paste0(variable_name, "_lag1")]] <- c(NA, data_esg[-nrow(data_esg), variable_name])
+
+data_esg_lag1 <- lag(data_esg,1)
+data_esg_lag2 <- lag(data_esg,2)
+data_esg_lag3 <- lag(data_esg,3)
+data_esg_lag4 <- lag(data_esg,4)
+data_esg_lag5 <- lag(data_esg,5)
+alldata_esg <- cbind(data_esg, data_esg_lag1[,c(3:6)], data_esg_lag2[,c(3:6)], data_esg_lag3[,c(3:6)], data_esg_lag4[,c(3:6)], data_esg_lag5[,c(3:6)])
+colnames(alldata_esg) <- c("companycode", "year", "roa", "roe", "eps", "esg", "roa1", "roe1", "eps1", "esg1", "roa2", "roe2", "eps2", "esg2", 
+                           "roa3", "roe3", "eps3", "esg3", "roa4", "roe4", "eps4", "esg4", "roa5", "roe5", "eps5", "esg5")
+alldata_esg <- alldata_esg[,c(3:ncol(alldata_esg))]
+model_lm_roa <- lm(roa~esg1+esg2+esg3+esg4+esg5, data = alldata_esg)
+summary(model_lm_roa)'
+
+#######################################################################################################################################
+
+write.csv(alldata, "alldata.csv")
+write.csv(alldata_without_na, "alldata_without_na.csv")
+
+######################################### 固定效果模型   ##############################################################################################
+#### roe model
+if(!require(plm))install.packages("plm")
+library(data.table)
+library(xts)
+alldata_without_na$year <- as.Date(paste(alldata_without_na$year, "-01-01", sep = ""), format = "%Y-%m-%d")
+
+alldata_without_na <- na.omit(alldata_without_na)
+#用alldata_without_na跑
+#### roe model
+model_roe_twoways <- plm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                         , data = alldata_without_na,
+                         index = c("year", "companycode"), model = "within", effects = "twoways")
+model_roe_individual <- plm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                            , data = alldata_without_na,
+                            index = c("year", "companycode"), model = "within", effects = "individual")
+model_roe_pooling <- plm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                         , data = alldata_without_na,
+                         index = c("year", "companycode"), model = "pooling")
+model_roe_random <- plm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                        , data = alldata_without_na,
+                        index = c("year", "companycode"), model = "random")
+summary(model_roe_twoways)
+summary(model_roe_individual)
+summary(model_roe_pooling)
+summary(model_roe_random)
+
+bptest_twoways_roe <- bptest(model_roe_twoways)
+summary_bptest_twoways <- summary(bptest_twoways_roe)
+plmtest_twoways_roe <- plmtest(model_roe_twoways)
+bptest_twoways_roe
+plmtest_twoways_roe
+sink("bptest and plmtest for roe pooling effect model .txt")
+bind_model <- stargazer(bptest_twoways_roe, plmtest_twoways_roe,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+pFtes_roe1 <- pFtest(model_roe_twoways, model_roe_pooling)
+pFtes_roe2 <- pFtest(model_roe_twoways, model_roe_random)
+pFtes_roe3 <- pFtest(model_roe_individual, model_roe_pooling)
+pFtes_roe4 <- pFtest(model_roe_individual, model_roe_random)
+pFtes_roe1
+pFtes_roe2
+pFtes_roe3
+pFtes_roe4
+sink("hausman test for roe pooling effect model .txt")
+bind_model <- stargazer(pFtes_roe1, pFtes_roe2, pFtes_roe3, pFtes_roe4,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+'混合回歸模型和固定效果模型的檢定，
+p<0.05，远小于通常的显著性水平（如0.05）。这表明了在个体效应存在显著影响的情况下，两个模型之间的差异是显著的。
+
+p-value is < 0.05 then the fixed effects model is a better choice'
+
+#### roa model
+model_roa_twoways <- plm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                      , data = alldata_without_na,
+                      index = c("year", "companycode"), model = "within", effects = "twoways")
+model_roa_individual <- plm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                 , data = alldata_without_na,
+                 index = c("year", "companycode"), model = "within", effects = "individual")
+model_roa_pooling <- plm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                 , data = alldata_without_na,
+                 index = c("year", "companycode"), model = "pooling")
+model_roa_random <- plm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                 , data = alldata_without_na,
+                 index = c("year", "companycode"), model = "random")
+summary(model_roa_twoways)
+summary(model_roa_individual)
+summary(model_roa_pooling)
+summary(model_roa_random)
+
+bptest(model_roa_twoways)
+plmtest(model_roa_twoways)
+
+pFtest(model_roa_twoways, model_roa_pooling)
+pFtest(model_roa_twoways, model_roa_random)
+pFtest(model_roa_individual, model_roa_pooling)
+pFtest(model_roa_individual, model_roa_random)
+sink("hausman test for pooling effect model .txt")
+bind_model <- stargazer(model_roa, model_roe, model_eps,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+'混合回歸模型和固定效果模型的檢定，
+p<0.05，顯著，因此拒絕虛無假説，
+使用固定效果模型較爲適當
+p-value is < 0.05 then the fixed effects model is a better choice'
+
+#phtest(put_random_model, put_fix_model1)
+#phtest(put_random_model_data, put_fix_model1_data)
+'隨即效果模型和固定效果模型的檢定，
+p<0.05，不顯著，因此不拒絕虛無假説，
+使用固定效果模型較爲適當'
+
+### eps model
+model_eps_twoways <- plm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                         , data = alldata_without_na,
+                         index = c("year", "companycode"), model = "within", effects = "twoways")
+model_eps_individual <- plm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                            , data = alldata_without_na,
+                            index = c("year", "companycode"), model = "within", effects = "individual")
+model_eps_pooling <- plm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                         , data = alldata_without_na,
+                         index = c("year", "companycode"), model = "pooling")
+model_eps_random <- plm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum
+                        , data = alldata_without_na,
+                        index = c("year", "companycode"), model = "random")
+summary(model_eps_twoways)
+summary(model_eps_individual)
+summary(model_eps_pooling)
+summary(model_eps_random)
+
+aic_eps_twoways <- AIC(model_eps_twoways)
+
+bptest(model_eps_twoways)
+plmtest(model_eps_twoways)
+
+pFtest(model_eps_twoways, model_eps_pooling)
+pFtest(model_eps_twoways, model_eps_random)
+pFtest(model_eps_individual, model_eps_pooling)
+pFtest(model_eps_individual, model_eps_random)
+'混合回歸模型和固定效果模型的檢定，
+p<0.05，顯著，因此拒絕虛無假説，
+使用固定效果模型較爲適當
+p-value is < 0.05 then the fixed effects model is a better choice'
+
+sink("plm model test .txt")
+bind_model <- stargazer(model_roa, model_roe, model_eps,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+sink("hausman test for pooling effect model .txt")
+bind_model <- stargazer(model_roa, model_roe, model_eps,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+######################################### ADF檢驗   ##############################################################################################
+
+
+
+
+
+
+
+
+
+
