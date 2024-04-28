@@ -1,0 +1,370 @@
+rm(list=ls())
+
+library(readxl)
+library(dplyr)
+library(openxlsx)
+library(car)
+library(stargazer)
+library(lmtest)
+library(xts)
+library(vars) #for adf test
+library(tseries)
+library(AER)
+library(plm)
+library(data.table)
+
+library(readxl)
+
+#自變數
+E_after2010 <- read_excel("Downloads/ESGdata(自變數)-2010后.xlsx", sheet = 1)
+S_after2010 <- read_excel("Downloads/ESGdata(自變數)-2010后.xlsx", sheet = 2)
+G_after2010 <- read_excel("Downloads/ESGdata(自變數)-2010后.xlsx", sheet = 3)
+Edata_after2010 <- data.frame()
+for (i in 2:ncol(E_after2010)) {
+  tem <- cbind(E_after2010[,1],E_after2010[,i])
+  colnames_tem <- rep(colnames(E_after2010[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Edata_after2010 <- rbind(Edata_after2010, tem1)
+}
+colnames(Edata_after2010) <- c("companycode", "year", "E")
+Edata_after2010 <- Edata_after2010[order(Edata_after2010$year, Edata_after2010$companycode),]
+Sdata_after2010 <- data.frame()
+for (i in 2:ncol(S_after2010)) {
+  tem <- cbind(S_after2010[,1],S_after2010[,i])
+  colnames_tem <- rep(colnames(S_after2010[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Sdata_after2010 <- rbind(Sdata_after2010, tem1)
+}
+colnames(Sdata_after2010) <- c("companycode", "year", "S")
+Sdata_after2010 <- Sdata_after2010[order(Sdata_after2010$year, Sdata_after2010$companycode),]
+Gdata_after2010 <- data.frame()
+for (i in 2:ncol(G_after2010)) {
+  tem <- cbind(G_after2010[,1],G_after2010[,i])
+  colnames_tem <- rep(colnames(G_after2010[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Gdata_after2010 <- rbind(Gdata_after2010, tem1)
+}
+colnames(Gdata_after2010) <- c("companycode", "year", "G")
+Gdata_after2010 <- Gdata_after2010[order(Gdata_after2010$year, Gdata_after2010$companycode),]
+rm(tem, tem1, colnames_tem, E_after2010, S_after2010, G_after2010)
+
+E_before2010 <- read_excel("Downloads/ESGdata(自變數).xlsx", sheet =1)
+S_before2010 <- read_excel("Downloads/ESGdata(自變數).xlsx", sheet =2)
+G_before2010 <- read_excel("Downloads/ESGdata(自變數).xlsx", sheet =3)
+Edata_before2010 <- data.frame()
+for (i in 2:ncol(E_before2010)) {
+  tem <- cbind(E_before2010[,1],E_before2010[,i])
+  colnames_tem <- rep(colnames(E_before2010[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Edata_before2010 <- rbind(Edata_before2010, tem1)
+}
+colnames(Edata_before2010) <- c("companycode", "year", "E")
+Edata_before2010 <- Edata_before2010[order(Edata_before2010$year, Edata_before2010$companycode),]
+Sdata_before2010 <- data.frame()
+for (i in 2:ncol(S_before2010)) {
+  tem <- cbind(S_before2010[,1],S_before2010[,i])
+  colnames_tem <- rep(colnames(S_before2010[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Sdata_before2010 <- rbind(Sdata_before2010, tem1)
+}
+colnames(Sdata_before2010) <- c("companycode", "year", "S")
+Sdata_before2010 <- Sdata_before2010[order(Sdata_before2010$year, Sdata_before2010$companycode),]
+Gdata_before2010 <- data.frame()
+for (i in 2:ncol(G_before2010)) {
+  tem <- cbind(G_before2010[,1],G_before2010[,i])
+  colnames_tem <- rep(colnames(G_before2010[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Gdata_before2010 <- rbind(Gdata_before2010, tem1)
+}
+colnames(Gdata_before2010) <- c("companycode", "year", "G")
+Gdata_before2010 <- Gdata_before2010[order(Gdata_before2010$year, Gdata_before2010$companycode),]
+rm(tem, tem1, colnames_tem, E_before2010, S_before2010, G_before2010)
+#自變數
+E_after2010_工业 <- read_excel("Downloads/ESGdata(自變數)-2010后-工业.xlsx", sheet = 1)
+S_after2010_工业 <- read_excel("Downloads/ESGdata(自變數)-2010后-工业.xlsx", sheet = 2)
+G_after2010_工业 <- read_excel("Downloads/ESGdata(自變數)-2010后-工业.xlsx", sheet = 3)
+Edata_after2010_工业 <- data.frame()
+for (i in 2:ncol(E_after2010_工业)) {
+  tem <- cbind(E_after2010_工业[,1],E_after2010_工业[,i])
+  colnames_tem <- rep(colnames(E_after2010_工业[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Edata_after2010_工业 <- rbind(Edata_after2010_工业, tem1)
+}
+colnames(Edata_after2010_工业) <- c("companycode", "year", "E")
+Edata_after2010_工业 <- Edata_after2010_工业[order(Edata_after2010_工业$year, Edata_after2010_工业$companycode),]
+Sdata_after2010_工业 <- data.frame()
+for (i in 2:ncol(S_after2010_工业)) {
+  tem <- cbind(S_after2010_工业[,1],S_after2010_工业[,i])
+  colnames_tem <- rep(colnames(S_after2010_工业[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Sdata_after2010_工业 <- rbind(Sdata_after2010_工业, tem1)
+}
+colnames(Sdata_after2010_工业) <- c("companycode", "year", "S")
+Sdata_after2010_工业 <- Sdata_after2010_工业[order(Sdata_after2010_工业$year, Sdata_after2010_工业$companycode),]
+Gdata_after2010_工业 <- data.frame()
+for (i in 2:ncol(G_after2010_工业)) {
+  tem <- cbind(G_after2010_工业[,1],G_after2010_工业[,i])
+  colnames_tem <- rep(colnames(G_after2010_工业[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Gdata_after2010_工业 <- rbind(Gdata_after2010_工业, tem1)
+}
+colnames(Gdata_after2010_工业) <- c("companycode", "year", "G")
+Gdata_after2010_工业 <- Gdata_after2010_工业[order(Gdata_after2010_工业$year, Gdata_after2010_工业$companycode),]
+rm(tem, tem1, colnames_tem, E_after2010_工业, S_after2010_工业, G_after2010_工业)
+
+E_after2010_金融 <- read_excel("Downloads/ESGdata(自變數)-2010后-金融.xlsx", sheet = 1)
+S_after2010_金融 <- read_excel("Downloads/ESGdata(自變數)-2010后-金融.xlsx", sheet = 2)
+G_after2010_金融 <- read_excel("Downloads/ESGdata(自變數)-2010后-金融.xlsx", sheet = 3)
+Edata_after2010_金融 <- data.frame()
+for (i in 2:ncol(E_after2010_金融)) {
+  tem <- cbind(E_after2010_金融[,1],E_after2010_金融[,i])
+  colnames_tem <- rep(colnames(E_after2010_金融[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Edata_after2010_金融 <- rbind(Edata_after2010_金融, tem1)
+}
+colnames(Edata_after2010_金融) <- c("companycode", "year", "E")
+Edata_after2010_金融 <- Edata_after2010_金融[order(Edata_after2010_金融$year, Edata_after2010_金融$companycode),]
+Sdata_after2010_金融 <- data.frame()
+for (i in 2:ncol(S_after2010_金融)) {
+  tem <- cbind(S_after2010_金融[,1],S_after2010_金融[,i])
+  colnames_tem <- rep(colnames(S_after2010_金融[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Sdata_after2010_金融 <- rbind(Sdata_after2010_金融, tem1)
+}
+colnames(Sdata_after2010_金融) <- c("companycode", "year", "S")
+Sdata_after2010_金融 <- Sdata_after2010_金融[order(Sdata_after2010_金融$year, Sdata_after2010_金融$companycode),]
+Gdata_after2010_金融 <- data.frame()
+for (i in 2:ncol(G_after2010_金融)) {
+  tem <- cbind(G_after2010_金融[,1],G_after2010_金融[,i])
+  colnames_tem <- rep(colnames(G_after2010_金融[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Gdata_after2010_金融 <- rbind(Gdata_after2010_金融, tem1)
+}
+colnames(Gdata_after2010_金融) <- c("companycode", "year", "G")
+Gdata_after2010_金融 <- Gdata_after2010_金融[order(Gdata_after2010_金融$year, Gdata_after2010_金融$companycode),]
+rm(tem, tem1, colnames_tem, E_after2010_金融, S_after2010_金融, G_after2010_金融)
+
+E_工业 <- read_excel("Downloads/ESGdata(自變數)-工业.xlsx", sheet = 1)
+S_工业 <- read_excel("Downloads/ESGdata(自變數)-工业.xlsx", sheet = 2)
+G_工业 <- read_excel("Downloads/ESGdata(自變數)-工业.xlsx", sheet = 3)
+Edata_工业 <- data.frame()
+for (i in 2:ncol(E_工业)) {
+  tem <- cbind(E_工业[,1],E_工业[,i])
+  colnames_tem <- rep(colnames(E_工业[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Edata_工业 <- rbind(Edata_工业, tem1)
+}
+colnames(Edata_工业) <- c("companycode", "year", "E")
+Edata_工业 <- Edata_工业[order(Edata_工业$year, Edata_工业$companycode),]
+Sdata_工业 <- data.frame()
+for (i in 2:ncol(S_工业)) {
+  tem <- cbind(S_工业[,1],S_工业[,i])
+  colnames_tem <- rep(colnames(S_工业[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Sdata_工业 <- rbind(Sdata_工业, tem1)
+}
+colnames(Sdata_工业) <- c("companycode", "year", "S")
+Sdata_工业 <- Sdata_工业[order(Sdata_工业$year, Sdata_工业$companycode),]
+Gdata_工业 <- data.frame()
+for (i in 2:ncol(G_工业)) {
+  tem <- cbind(G_工业[,1],G_工业[,i])
+  colnames_tem <- rep(colnames(G_工业[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Gdata_工业 <- rbind(Gdata_工业, tem1)
+}
+colnames(Gdata_工业) <- c("companycode", "year", "G")
+Gdata_工业 <- Gdata_工业[order(Gdata_工业$year, Gdata_工业$companycode),]
+rm(tem, tem1, colnames_tem, E_工业, S_工业, G_工业)
+
+E_金融 <- read_excel("Downloads/ESGdata(自變數)-金融.xlsx", sheet = 1)
+S_金融 <- read_excel("Downloads/ESGdata(自變數)-金融.xlsx", sheet = 2)
+G_金融 <- read_excel("Downloads/ESGdata(自變數)-金融.xlsx", sheet = 3)
+Edata_金融 <- data.frame()
+for (i in 2:ncol(E_金融)) {
+  tem <- cbind(E_金融[,1],E_金融[,i])
+  colnames_tem <- rep(colnames(E_金融[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Edata_金融 <- rbind(Edata_金融, tem1)
+}
+colnames(Edata_金融) <- c("companycode", "year", "E")
+Edata_金融 <- Edata_金融[order(Edata_金融$year, Edata_金融$companycode),]
+Sdata_金融 <- data.frame()
+for (i in 2:ncol(S_金融)) {
+  tem <- cbind(S_金融[,1],S_金融[,i])
+  colnames_tem <- rep(colnames(S_金融[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Sdata_金融 <- rbind(Sdata_金融, tem1)
+}
+colnames(Sdata_金融) <- c("companycode", "year", "S")
+Sdata_金融 <- Sdata_金融[order(Sdata_金融$year, Sdata_金融$companycode),]
+Gdata_金融 <- data.frame()
+for (i in 2:ncol(G_金融)) {
+  tem <- cbind(G_金融[,1],G_金融[,i])
+  colnames_tem <- rep(colnames(G_金融[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  Gdata_金融 <- rbind(Gdata_金融, tem1)
+}
+colnames(Gdata_金融) <- c("companycode", "year", "G")
+Gdata_金融 <- Gdata_金融[order(Gdata_金融$year, Gdata_金融$companycode),]
+rm(tem, tem1, colnames_tem, E_金融, S_金融, G_金融)
+
+#應變量
+EPS_top30 <- read_excel("Downloads/EPS(應變量)-前30%.xlsx")
+EPS_btm30 <- read_excel("Downloads/EPS(應變量)-后30%.xlsx")
+ROA_top30 <- read_excel("Downloads/ROA(應變量)-前30%.xlsx")
+ROA_btm30 <- read_excel("Downloads/ROA(應變量)-后30%.xlsx")
+ROE_top30 <- read_excel("Downloads/ROE(應變量)-前30%.xlsx")
+ROE_btm30 <- read_excel("Downloads/ROE(應變量)-后30%.xlsx")
+EPSdata_top30 <- data.frame()
+for (i in 2:ncol(EPS_top30)) {
+  tem <- cbind(EPS_top30[,1],EPS_top30[,i])
+  colnames_tem <- rep(colnames(EPS_top30[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  EPSdata_top30 <- rbind(EPSdata_top30, tem1)
+}
+colnames(EPSdata_top30) <- c("companycode", "year", "EPS")
+EPSdata_top30 <- EPSdata_top30[order(EPSdata_top30$year, EPSdata_top30$companycode),]
+ROAdata_top30 <- data.frame()
+for (i in 2:ncol(ROA_top30)) {
+  tem <- cbind(ROA_top30[,1],ROA_top30[,i])
+  colnames_tem <- rep(colnames(ROA_top30[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  ROAdata_top30 <- rbind(ROAdata_top30, tem1)
+}
+colnames(ROAdata_top30) <- c("companycode", "year", "ROA")
+ROAdata_top30 <- ROAdata_top30[order(ROAdata_top30$year, ROAdata_top30$companycode),]
+ROEdata_top30 <- data.frame()
+for (i in 2:ncol(ROE_top30)) {
+  tem <- cbind(ROE_top30[,1],ROE_top30[,i])
+  colnames_tem <- rep(colnames(ROE_top30[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  ROEdata_top30 <- rbind(ROEdata_top30, tem1)
+}
+colnames(ROEdata_top30) <- c("companycode", "year", "ROE")
+ROEdata_top30 <- ROEdata_top30[order(ROEdata_top30$year, ROEdata_top30$companycode),]
+EPSdata_btm30 <- data.frame()
+for (i in 2:ncol(EPS_btm30)) {
+  tem <- cbind(EPS_btm30[,1],EPS_btm30[,i])
+  colnames_tem <- rep(colnames(EPS_btm30[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  EPSdata_btm30 <- rbind(EPSdata_btm30, tem1)
+}
+colnames(EPSdata_btm30) <- c("companycode", "year", "EPS")
+EPSdata_btm30 <- EPSdata_btm30[order(EPSdata_btm30$year, EPSdata_btm30$companycode),]
+ROAdata_btm30 <- data.frame()
+for (i in 2:ncol(ROA_btm30)) {
+  tem <- cbind(ROA_btm30[,1],ROA_btm30[,i])
+  colnames_tem <- rep(colnames(ROA_btm30[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  ROAdata_btm30 <- rbind(ROAdata_btm30, tem1)
+}
+colnames(ROAdata_btm30) <- c("companycode", "year", "ROA")
+ROAdata_btm30 <- ROAdata_btm30[order(ROAdata_btm30$year, ROAdata_btm30$companycode),]
+ROEdata_btm30 <- data.frame()
+for (i in 2:ncol(ROE_btm30)) {
+  tem <- cbind(ROE_btm30[,1],ROE_btm30[,i])
+  colnames_tem <- rep(colnames(ROE_btm30[,i]), nrow(tem)) %>% as.data.frame()
+  tem1 <-  cbind(tem[,1], colnames_tem, tem[,2])
+  ROEdata_btm30 <- rbind(ROEdata_btm30, tem1)
+}
+colnames(ROEdata_btm30) <- c("companycode", "year", "ROE")
+ROEdata_btm30 <- ROEdata_btm30[order(ROEdata_btm30$year, ROEdata_btm30$companycode),]
+rm(tem, tem1, colnames_tem, EPS_top30, ROA_top30, ROE_top30, EPS_btm30, ROA_btm30, ROE_btm30)
+
+#做法：分别对三种分群的三个财务绩效做两个回归:
+#一个是当期E、S、G对当期财务绩效；
+#另一个是前一期E、S、G对当期财务绩效
+
+##步骤：
+# 1）跑内生性
+# 2）发现存在内生性后跑两阶段，时间分群:（2002-2022一群，2010-2022一群，分别跑roa,roe,eps）
+# 3）产业分群（工业化，金融业）
+# 4）绩效排序分群（前30%，后30%）
+# 5）3个分群分为：对当年的esg对当年财务绩效，前期esg对当年财务绩效，两种情况
+# 6）最后：对两阶段做vif共线性
+# 7）adf单根检验
+# 8）bic最佳滞后期
+# 9）granger因果检验
+
+#问题：步骤1算完成了？接下来跑2？
+alldata_without_na <- read.csv("Downloads/alldata_without_na.csv", header = T, sep =)
+alldata_without_na <- alldata_without_na[,c(2:ncol(alldata_without_na))]
+alldata_without_na$year <- substr(alldata_without_na$year, 1, 4)
+
+
+ESG_data_after2010 <- merge(Edata_after2010, Sdata_after2010[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESG_data_after2010 <- merge(ESG_data_after2010, Gdata_after2010[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESG_data_after2010 <- ESG_data_after2010[order(ESG_data_after2010$year, ESG_data_after2010$companycode),]
+rm(Edata_after2010, Sdata_after2010, Gdata_after2010)
+common_companycodes <- intersect(alldata_without_na$companycode, ESG_data_after2010$companycode)
+alldata_after2010 <- alldata_without_na[alldata_without_na$year > 2009, ]
+
+ESG_data_before2010 <- merge(Edata_before2010, Sdata_before2010[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESG_data_before2010 <- merge(ESG_data_before2010, Gdata_before2010[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESG_data_before2010 <- ESG_data_before2010[order(ESG_data_before2010$year, ESG_data_before2010$companycode),]
+rm(Edata_before2010, Sdata_before2010, Gdata_before2010)
+alldata_before2010 <- alldata_without_na[alldata_without_na$year < 2010, ]
+
+ESGdata_after2010_工业 <- merge(Edata_after2010_工业, Sdata_after2010_工业[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESGdata_after2010_工业 <- merge(ESGdata_after2010_工业, Gdata_after2010_工业[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESGdata_after2010_工业 <- ESGdata_after2010_工业[order(ESGdata_after2010_工业$year, ESGdata_after2010_工业$companycode),]
+rm(Edata_after2010_工业, Sdata_after2010_工业, Gdata_after2010_工业)
+common_companycodes <- intersect(alldata_without_na$companycode, ESGdata_after2010_工业$companycode)
+alldata_after2010_工业 <- alldata_after2010[alldata_after2010$companycode %in% common_companycodes, ]
+
+ESGdata_after2010_金融 <- merge(Edata_after2010_金融, Sdata_after2010_金融[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESGdata_after2010_金融 <- merge(ESGdata_after2010_金融, Gdata_after2010_金融[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESGdata_after2010_金融 <- ESGdata_after2010_金融[order(ESGdata_after2010_金融$year, ESGdata_after2010_金融$companycode),]
+rm(Edata_after2010_金融, Sdata_after2010_金融, Gdata_after2010_金融)
+common_companycodes <- intersect(alldata_without_na$companycode, ESGdata_after2010_金融$companycode)
+alldata_after2010_金融 <- alldata_after2010[alldata_after2010$companycode %in% common_companycodes, ]
+
+ESGdata_工业 <- merge(Edata_工业, Sdata_工业[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESGdata_工业 <- merge(ESGdata_工业, Gdata_工业[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESGdata_工业 <- ESGdata_工业[order(ESGdata_工业$year, ESGdata_工业$companycode),]
+rm(Edata_工业, Sdata_工业, Gdata_工业)
+common_companycodes <- intersect(alldata_without_na$companycode, ESGdata_工业$companycode)
+alldata_工业 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+
+ESGdata_金融 <- merge(Edata_金融, Sdata_金融[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESGdata_金融 <- merge(ESGdata_金融, Gdata_金融[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESGdata_金融 <- ESGdata_金融[order(ESGdata_金融$year, ESGdata_金融$companycode),]
+rm(Edata_金融, Sdata_金融, Gdata_金融)
+common_companycodes <- intersect(alldata_without_na$companycode, ESGdata_金融$companycode)
+alldata_金融 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+
+ROAdata_top30
+common_companycodes <- intersect(alldata_without_na$companycode, ROAdata_top30$companycode)
+alldata_ROA_top30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+ROEdata_top30
+common_companycodes <- intersect(alldata_without_na$companycode, ROEdata_top30$companycode)
+alldata_ROE_top30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+EPSdata_top30
+common_companycodes <- intersect(alldata_without_na$companycode, EPSdata_top30$companycode)
+alldata_EPS_top30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+ROAdata_btm30
+common_companycodes <- intersect(alldata_without_na$companycode, ROAdata_btm30$companycode)
+alldata_ROA_btm30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+ROEdata_btm30
+common_companycodes <- intersect(alldata_without_na$companycode, ROEdata_btm30$companycode)
+alldata_ROE_btm30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+EPSdata_btm30
+common_companycodes <- intersect(alldata_without_na$companycode, EPSdata_btm30$companycode)
+alldata_EPS_btm30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+
+############################## 两阶段 ########################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
