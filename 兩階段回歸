@@ -1,0 +1,931 @@
+rm(list=ls())
+
+library(readxl)
+library(dplyr)
+library(openxlsx)
+library(car)
+library(stargazer)
+library(lmtest)
+library(xts)
+library(vars) #for adf test
+library(tseries)
+library(AER)
+library(plm)
+library(dplyr)
+library(data.table)
+library(xts)
+library(readxl)
+
+
+
+#做法：分别对三种分群的三个财务绩效做两个回归:
+#一个是当期E、S、G对当期财务绩效；
+#另一个是前一期E、S、G对当期财务绩效
+
+##步骤：
+# 1）跑内生性
+# 2）发现存在内生性后跑两阶段，时间分群:（2002-2022一群，2010-2022一群，分别跑roa,roe,eps）
+# 3）产业分群（工业化，金融业）
+# 4）绩效排序分群（前30%，后30%）
+# 5）3个分群分为：对当年的esg对当年财务绩效，前期esg对当年财务绩效，两种情况
+# 6）最后：对两阶段做vif共线性
+# 7）adf单根检验
+# 8）bic最佳滞后期
+# 9）granger因果检验
+
+#问题：步骤1算完成了？接下来跑2？
+
+#自變數
+E_after2010 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-2010后.xlsx", sheet = 1)
+S_after2010 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-2010后.xlsx", sheet = 2)
+G_after2010 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-2010后.xlsx", sheet = 3)
+Edata_after2010 <- data.frame()
+for (i in 2:ncol(E_after2010)) {
+  tem_colnames <- rep(unique(colnames(E_after2010)[i]), nrow(E_after2010)) %>% as.data.frame()
+  tem_companycode <- E_after2010[,1] %>% as.data.frame()
+  tem <- E_after2010[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "E")
+  Edata_after2010 <- rbind(Edata_after2010, tem1)
+}
+colnames(Edata_after2010) <- c("companycode", "year", "E")
+Sdata_after2010 <- data.frame()
+for (i in 2:ncol(S_after2010)) {
+  tem_colnames <- rep(unique(colnames(S_after2010)[i]), nrow(S_after2010)) %>% as.data.frame()
+  tem_companycode <- S_after2010[,1] %>% as.data.frame()
+  tem <- S_after2010[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "S")
+  Sdata_after2010 <- rbind(Sdata_after2010, tem1)
+}
+colnames(Sdata_after2010) <- c("companycode", "year", "S")
+Gdata_after2010 <- data.frame()
+for (i in 2:ncol(G_after2010)) {
+  tem_colnames <- rep(unique(colnames(G_after2010)[i]), nrow(G_after2010)) %>% as.data.frame()
+  tem_companycode <- G_after2010[,1] %>% as.data.frame()
+  tem <- G_after2010[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "G")
+  Gdata_after2010 <- rbind(Gdata_after2010, tem1)
+}
+colnames(Gdata_after2010) <- c("companycode", "year", "G")
+rm(G_after2010, S_after2010, E_after2010, tem, tem1, tem_colnames, tem_companycode)
+
+E_before2010 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數).xlsx", sheet =1)
+S_before2010 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數).xlsx", sheet =2)
+G_before2010 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數).xlsx", sheet =3)
+Edata_before2010 <- data.frame()
+for (i in 2:ncol(E_before2010)) {
+  tem_colnames <- rep(unique(colnames(E_before2010)[i]), nrow(E_before2010)) %>% as.data.frame()
+  tem_companycode <- E_before2010[,1] %>% as.data.frame()
+  tem <- E_before2010[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "E")
+  Edata_before2010 <- rbind(Edata_before2010, tem1)
+}
+colnames(Edata_before2010) <- c("companycode", "year", "E")
+Sdata_before2010 <- data.frame()
+for (i in 2:ncol(S_before2010)) {
+  tem_colnames <- rep(unique(colnames(S_before2010)[i]), nrow(S_before2010)) %>% as.data.frame()
+  tem_companycode <- S_before2010[,1] %>% as.data.frame()
+  tem <- S_before2010[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "S")
+  Sdata_before2010 <- rbind(Sdata_before2010, tem1)
+}
+colnames(Sdata_before2010) <- c("companycode", "year", "S")
+Gdata_before2010 <- data.frame()
+for (i in 2:ncol(G_before2010)) {
+  tem_colnames <- rep(unique(colnames(G_before2010)[i]), nrow(G_before2010)) %>% as.data.frame()
+  tem_companycode <- G_before2010[,1] %>% as.data.frame()
+  tem <- G_before2010[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "G")
+  Gdata_before2010 <- rbind(Gdata_before2010, tem1)
+}
+colnames(Gdata_before2010) <- c("companycode", "year", "G")
+rm(G_before2010, S_before2010, E_before2010, tem, tem1, tem_colnames, tem_companycode)
+#自變數
+E_after2010_工业 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-2010后-工业.xlsx", sheet = 1)
+S_after2010_工业 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-2010后-工业.xlsx", sheet = 2)
+G_after2010_工业 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-2010后-工业.xlsx", sheet = 3)
+Edata_after2010_工业 <- data.frame()
+for (i in 2:ncol(E_after2010_工业)) {
+  tem_colnames <- rep(unique(colnames(E_after2010_工业)[i]), nrow(E_after2010_工业)) %>% as.data.frame()
+  tem_companycode <- E_after2010_工业[,1] %>% as.data.frame()
+  tem <- E_after2010_工业[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "E")
+  Edata_after2010_工业 <- rbind(Edata_after2010_工业, tem1)
+}
+colnames(Edata_after2010_工业) <- c("companycode", "year", "E")
+Sdata_after2010_工业 <- data.frame()
+for (i in 2:ncol(S_after2010_工业)) {
+  tem_colnames <- rep(unique(colnames(S_after2010_工业)[i]), nrow(S_after2010_工业)) %>% as.data.frame()
+  tem_companycode <- S_after2010_工业[,1] %>% as.data.frame()
+  tem <- S_after2010_工业[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "S")
+  Sdata_after2010_工业 <- rbind(Sdata_after2010_工业, tem1)
+}
+colnames(Sdata_after2010_工业) <- c("companycode", "year", "S")
+Gdata_after2010_工业 <- data.frame()
+for (i in 2:ncol(G_after2010_工业)) {
+  tem_colnames <- rep(unique(colnames(G_after2010_工业)[i]), nrow(G_after2010_工业)) %>% as.data.frame()
+  tem_companycode <- G_after2010_工业[,1] %>% as.data.frame()
+  tem <- G_after2010_工业[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "G")
+  Gdata_after2010_工业 <- rbind(Gdata_after2010_工业, tem1)
+}
+colnames(Gdata_after2010_工业) <- c("companycode", "year", "G")
+rm(G_after2010_工业, S_after2010_工业, E_after2010_工业, tem, tem1, tem_colnames, tem_companycode)
+
+E_after2010_金融 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-2010后-金融.xlsx", sheet = 1)
+S_after2010_金融 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-2010后-金融.xlsx", sheet = 2)
+G_after2010_金融 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-2010后-金融.xlsx", sheet = 3)
+Edata_after2010_金融 <- data.frame()
+for (i in 2:ncol(E_after2010_金融)) {
+  tem_colnames <- rep(unique(colnames(E_after2010_金融)[i]), nrow(E_after2010_金融)) %>% as.data.frame()
+  tem_companycode <- E_after2010_金融[,1] %>% as.data.frame()
+  tem <- E_after2010_金融[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "E")
+  Edata_after2010_金融 <- rbind(Edata_after2010_金融, tem1)
+}
+colnames(Edata_after2010_金融) <- c("companycode", "year", "E")
+Sdata_after2010_金融 <- data.frame()
+for (i in 2:ncol(S_after2010_金融)) {
+  tem_colnames <- rep(unique(colnames(S_after2010_金融)[i]), nrow(S_after2010_金融)) %>% as.data.frame()
+  tem_companycode <- S_after2010_金融[,1] %>% as.data.frame()
+  tem <- S_after2010_金融[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "S")
+  Sdata_after2010_金融 <- rbind(Sdata_after2010_金融, tem1)
+}
+colnames(Sdata_after2010_金融) <- c("companycode", "year", "S")
+Gdata_after2010_金融 <- data.frame()
+for (i in 2:ncol(G_after2010_金融)) {
+  tem_colnames <- rep(unique(colnames(G_after2010_金融)[i]), nrow(G_after2010_金融)) %>% as.data.frame()
+  tem_companycode <- G_after2010_金融[,1] %>% as.data.frame()
+  tem <- G_after2010_金融[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "G")
+  Gdata_after2010_金融 <- rbind(Gdata_after2010_金融, tem1)
+}
+colnames(Gdata_after2010_金融) <- c("companycode", "year", "G")
+rm(G_after2010_金融, S_after2010_金融, E_after2010_金融, tem, tem1, tem_colnames, tem_companycode)
+
+E_工业 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-工业.xlsx", sheet = 1)
+S_工业 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-工业.xlsx", sheet = 2)
+G_工业 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-工业.xlsx", sheet = 3)
+Edata_工业 <- data.frame()
+for (i in 2:ncol(E_工业)) {
+  tem_colnames <- rep(unique(colnames(E_工业)[i]), nrow(E_工业)) %>% as.data.frame()
+  tem_companycode <- E_工业[,1] %>% as.data.frame()
+  tem <- E_工业[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "E")
+  Edata_工业 <- rbind(Edata_工业, tem1)
+}
+colnames(Edata_工业) <- c("companycode", "year", "E")
+Sdata_工业 <- data.frame()
+for (i in 2:ncol(S_工业)) {
+  tem_colnames <- rep(unique(colnames(S_工业)[i]), nrow(S_工业)) %>% as.data.frame()
+  tem_companycode <- S_工业[,1] %>% as.data.frame()
+  tem <- S_工业[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "S")
+  Sdata_工业 <- rbind(Sdata_工业, tem1)
+}
+colnames(Sdata_工业) <- c("companycode", "year", "S")
+Gdata_工业 <- data.frame()
+for (i in 2:ncol(G_工业)) {
+  tem_colnames <- rep(unique(colnames(G_工业)[i]), nrow(G_工业)) %>% as.data.frame()
+  tem_companycode <- G_工业[,1] %>% as.data.frame()
+  tem <- G_工业[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "G")
+  Gdata_工业 <- rbind(Gdata_工业, tem1)
+}
+colnames(Gdata_工业) <- c("companycode", "year", "G")
+rm(G_工业, S_工业, E_工业, tem, tem1, tem_colnames, tem_companycode)
+
+E_金融 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-金融.xlsx", sheet = 1)
+S_金融 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-金融.xlsx", sheet = 2)
+G_金融 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-金融.xlsx", sheet = 3)
+Edata_金融 <- data.frame()
+for (i in 2:ncol(E_金融)) {
+  tem_colnames <- rep(unique(colnames(E_金融)[i]), nrow(E_金融)) %>% as.data.frame()
+  tem_companycode <- E_金融[,1] %>% as.data.frame()
+  tem <- E_金融[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "E")
+  Edata_金融 <- rbind(Edata_金融, tem1)
+}
+colnames(Edata_金融) <- c("companycode", "year", "E")
+Sdata_金融 <- data.frame()
+for (i in 2:ncol(S_金融)) {
+  tem_colnames <- rep(unique(colnames(S_金融)[i]), nrow(S_金融)) %>% as.data.frame()
+  tem_companycode <- S_金融[,1] %>% as.data.frame()
+  tem <- S_金融[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "S")
+  Sdata_金融 <- rbind(Sdata_金融, tem1)
+}
+colnames(Sdata_金融) <- c("companycode", "year", "S")
+Gdata_金融 <- data.frame()
+for (i in 2:ncol(G_金融)) {
+  tem_colnames <- rep(unique(colnames(G_金融)[i]), nrow(G_金融)) %>% as.data.frame()
+  tem_companycode <- G_金融[,1] %>% as.data.frame()
+  tem <- G_金融[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "G")
+  Gdata_金融 <- rbind(Gdata_金融, tem1)
+}
+colnames(Gdata_金融) <- c("companycode", "year", "G")
+rm(G_金融, S_金融, E_金融, tem, tem1, tem_colnames, tem_companycode)
+
+#應變量
+EPS_top30 <- read_excel("C:/Users/user/Downloads/EPS(應變量)-前30%.xlsx")
+EPS_btm30 <- read_excel("C:/Users/user/Downloads/EPS(應變量)-后30%.xlsx")
+ROA_top30 <- read_excel("C:/Users/user/Downloads/ROA(應變量)-前30%.xlsx")
+ROA_btm30 <- read_excel("C:/Users/user/Downloads/ROA(應變量)-后30%.xlsx")
+ROE_top30 <- read_excel("C:/Users/user/Downloads/ROE(應變量)-前30%.xlsx")
+ROE_btm30 <- read_excel("C:/Users/user/Downloads/ROE(應變量)-后30%.xlsx")
+
+EPSdata_top30 <- data.frame()
+for (i in 2:ncol(EPS_top30)) {
+  tem_colnames <- rep(unique(colnames(EPS_top30)[i]), nrow(EPS_top30)) %>% as.data.frame()
+  tem_companycode <- EPS_top30[,1] %>% as.data.frame()
+  tem <- EPS_top30[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "EPS_top30")
+  EPSdata_top30 <- rbind(EPSdata_top30, tem1)
+}
+colnames(EPSdata_top30) <- c("companycode", "year", "EPS_top30")
+ROAdata_top30 <- data.frame()
+for (i in 2:ncol(ROA_top30)) {
+  tem_colnames <- rep(unique(colnames(ROA_top30)[i]), nrow(ROA_top30)) %>% as.data.frame()
+  tem_companycode <- ROA_top30[,1] %>% as.data.frame()
+  tem <- ROA_top30[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "ROA_top30")
+  ROAdata_top30 <- rbind(ROAdata_top30, tem1)
+}
+colnames(ROAdata_top30) <- c("companycode", "year", "ROA_top30")
+ROEdata_top30 <- data.frame()
+for (i in 2:ncol(ROE_top30)) {
+  tem_colnames <- rep(unique(colnames(ROE_top30)[i]), nrow(ROE_top30)) %>% as.data.frame()
+  tem_companycode <- ROE_top30[,1] %>% as.data.frame()
+  tem <- ROE_top30[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "ROE_top30")
+  ROEdata_top30 <- rbind(ROEdata_top30, tem1)
+}
+colnames(ROEdata_top30) <- c("companycode", "year", "ROE_top30")
+
+EPSdata_btm30 <- data.frame()
+for (i in 2:ncol(EPS_btm30)) {
+  tem_colnames <- rep(unique(colnames(EPS_btm30)[i]), nrow(EPS_btm30)) %>% as.data.frame()
+  tem_companycode <- EPS_btm30[,1] %>% as.data.frame()
+  tem <- EPS_btm30[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "EPS_btm30")
+  EPSdata_btm30 <- rbind(EPSdata_btm30, tem1)
+}
+colnames(EPSdata_btm30) <- c("companycode", "year", "EPS_btm30")
+ROAdata_btm30 <- data.frame()
+for (i in 2:ncol(ROA_btm30)) {
+  tem_colnames <- rep(unique(colnames(ROA_btm30)[i]), nrow(ROA_btm30)) %>% as.data.frame()
+  tem_companycode <- ROA_btm30[,1] %>% as.data.frame()
+  tem <- ROA_btm30[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "ROA_btm30")
+  ROAdata_btm30 <- rbind(ROAdata_btm30, tem1)
+}
+colnames(ROAdata_btm30) <- c("companycode", "year", "ROA_btm30")
+ROEdata_btm30 <- data.frame()
+for (i in 2:ncol(ROE_btm30)) {
+  tem_colnames <- rep(unique(colnames(ROE_btm30)[i]), nrow(ROE_btm30)) %>% as.data.frame()
+  tem_companycode <- ROE_btm30[,1] %>% as.data.frame()
+  tem <- ROE_btm30[,i] %>% as.data.frame()
+  tem1 <- cbind(tem_companycode, tem_colnames, tem)
+  tem1 <- tem1[order(tem1[,1]),]
+  colnames(tem1) <- c("companycode", "year", "ROE_btm30")
+  ROEdata_btm30 <- rbind(ROEdata_btm30, tem1)
+}
+colnames(ROEdata_btm30) <- c("companycode", "year", "ROE_btm30")
+
+rm(ROE_btm30, ROA_btm30, EPS_btm30,ROE_top30, ROA_top30, EPS_top30, tem, tem1, tem_colnames, tem_companycode)
+
+##輸入全部資料
+alldata_without_na <- read.csv("C:/Users/user/Downloads/alldata_without_na.csv", header = T, sep = ",")
+alldata_without_na <- alldata_without_na[,c(2:ncol(alldata_without_na))]
+alldata_without_na$year <- substr(alldata_without_na$year, 1, 4)
+
+
+ESG_data_after2010 <- merge(Edata_after2010, Sdata_after2010[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESG_data_after2010 <- merge(ESG_data_after2010, Gdata_after2010[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESG_data_after2010 <- ESG_data_after2010[order(ESG_data_after2010$year, ESG_data_after2010$companycode),]
+rm(Edata_after2010, Sdata_after2010, Gdata_after2010)
+common_companycodes <- intersect(alldata_without_na$companycode, ESG_data_after2010$companycode)
+alldata_after2010 <- alldata_without_na[alldata_without_na$year > 2009, ]
+
+ESG_data_before2010 <- merge(Edata_before2010, Sdata_before2010[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESG_data_before2010 <- merge(ESG_data_before2010, Gdata_before2010[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESG_data_before2010 <- ESG_data_before2010[order(ESG_data_before2010$year, ESG_data_before2010$companycode),]
+rm(Edata_before2010, Sdata_before2010, Gdata_before2010)
+alldata_before2010 <- alldata_without_na[alldata_without_na$year < 2010, ]
+
+ESGdata_after2010_工业 <- merge(Edata_after2010_工业, Sdata_after2010_工业[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESGdata_after2010_工业 <- merge(ESGdata_after2010_工业, Gdata_after2010_工业[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESGdata_after2010_工业 <- ESGdata_after2010_工业[order(ESGdata_after2010_工业$year, ESGdata_after2010_工业$companycode),]
+rm(Edata_after2010_工业, Sdata_after2010_工业, Gdata_after2010_工业)
+common_companycodes <- intersect(alldata_without_na$companycode, ESGdata_after2010_工业$companycode)
+alldata_after2010_工业 <- alldata_after2010[alldata_after2010$companycode %in% common_companycodes, ]
+
+ESGdata_after2010_金融 <- merge(Edata_after2010_金融, Sdata_after2010_金融[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESGdata_after2010_金融 <- merge(ESGdata_after2010_金融, Gdata_after2010_金融[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESGdata_after2010_金融 <- ESGdata_after2010_金融[order(ESGdata_after2010_金融$year, ESGdata_after2010_金融$companycode),]
+rm(Edata_after2010_金融, Sdata_after2010_金融, Gdata_after2010_金融)
+common_companycodes <- intersect(alldata_without_na$companycode, ESGdata_after2010_金融$companycode)
+alldata_after2010_金融 <- alldata_after2010[alldata_after2010$companycode %in% common_companycodes, ]
+
+ESGdata_工业 <- merge(Edata_工业, Sdata_工业[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESGdata_工业 <- merge(ESGdata_工业, Gdata_工业[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESGdata_工业 <- ESGdata_工业[order(ESGdata_工业$year, ESGdata_工业$companycode),]
+rm(Edata_工业, Sdata_工业, Gdata_工业)
+common_companycodes <- intersect(alldata_without_na$companycode, ESGdata_工业$companycode)
+alldata_工业 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+
+ESGdata_金融 <- merge(Edata_金融, Sdata_金融[, c("companycode", "year", "S")], by = c("companycode", "year"))
+ESGdata_金融 <- merge(ESGdata_金融, Gdata_金融[, c("companycode", "year", "G")], by = c("companycode", "year"))
+ESGdata_金融 <- ESGdata_金融[order(ESGdata_金融$year, ESGdata_金融$companycode),]
+rm(Edata_金融, Sdata_金融, Gdata_金融)
+common_companycodes <- intersect(alldata_without_na$companycode, ESGdata_金融$companycode)
+alldata_金融 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+
+common_companycodes <- intersect(alldata_without_na$companycode, ROAdata_top30$companycode)
+alldata_ROA_top30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+common_companycodes <- intersect(alldata_without_na$companycode, ROEdata_top30$companycode)
+alldata_ROE_top30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+common_companycodes <- intersect(alldata_without_na$companycode, EPSdata_top30$companycode)
+alldata_EPS_top30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+common_companycodes <- intersect(alldata_without_na$companycode, ROAdata_btm30$companycode)
+alldata_ROA_btm30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+common_companycodes <- intersect(alldata_without_na$companycode, ROEdata_btm30$companycode)
+alldata_ROE_btm30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+common_companycodes <- intersect(alldata_without_na$companycode, EPSdata_btm30$companycode)
+alldata_EPS_btm30 <- alldata_without_na[alldata_without_na$companycode %in% common_companycodes, ]
+
+############################## 内生性 ################################################
+#1)
+model_roe2 <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+model_roa2 <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+model_eps2 <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+
+##roe
+first_roe <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+predicted_X <- fitted(first_roe)
+# 第二阶段回归（使用第一阶段的预测值）
+second_roe <- ivreg(roe~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+# 查看估计结果
+summary(second_roe)
+# 查看第二阶段回归的估计结果
+summary_second_roe <- summary(second_roe)
+# 提取所需的系数和标准误差
+coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
+
+# 重新计算 Hausman 统计量
+hausman_statistic_roe <- (coef(model_roe2) - coef_second_roe) / sqrt(abs(diag(vcov(model_roe2)) - diag(vcov(second_roe))))# 计算 P 值
+p_value_roe <- 2 * (1 - pnorm(abs(hausman_statistic_roe)))
+# 输出结果
+print(cbind(hausman_statistic_roe, p_value_roe))
+
+##roa
+first_roa <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+predicted_X <- fitted(first_roa)
+# 第二阶段回归（使用第一阶段的预测值）
+second_roa <- ivreg(roa~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+# 查看估计结果
+summary(second_roa)
+# 查看第二阶段回归的估计结果
+summary_second_roa <- summary(second_roa)
+# 提取所需的系数和标准误差
+coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
+
+# 重新计算 Hausman 统计量
+hausman_statistic_roa <- (coef(model_roa2) - coef_second_roa) / sqrt(abs(diag(vcov(model_roa2)) - diag(vcov(second_roa))))
+# 计算 P 值
+p_value_roa <- 2 * (1 - pnorm(abs(hausman_statistic_roa)))
+# 输出结果
+print(cbind(hausman_statistic_roa, p_value_roa))
+##eps
+first_eps <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+predicted_X <- fitted(first_eps)
+# 第二阶段回归（使用第一阶段的预测值）
+second_eps <- ivreg(eps~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+# 查看估计结果
+summary(second_eps)
+# 查看第二阶段回归的估计结果
+summary_second_eps <- summary(second_eps)
+# 提取所需的系数和标准误差
+coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
+
+# 重新计算 Hausman 统计量
+hausman_statistic_eps <- (coef(model_eps2) - coef_second_eps) / sqrt(abs(diag(vcov(model_eps2)) - diag(vcov(second_eps))))
+# 计算 P 值
+p_value_eps <- 2 * (1 - pnorm(abs(hausman_statistic_eps)))
+# 输出结果
+hausman_statistic_roe <- round(hausman_statistic_roe, 4)
+p_value_roe <- round(p_value_roe, 4)
+hausman_statistic_roa <- round(hausman_statistic_roa, 4)
+p_value_roa <- round(p_value_roa, 4)
+hausman_statistic_eps <- round(hausman_statistic_eps, 4)
+p_value_eps <- round(p_value_eps, 4)
+hausman_statistic <- cbind(hausman_statistic_roe, p_value_roe, hausman_statistic_roa, p_value_roa, hausman_statistic_eps, p_value_eps)
+print(hausman_statistic)
+sink("hausman_statistic.txt")
+bind_model <- stargazer(hausman_statistic, 
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+'hausman 计算了第一阶段估计的系数和第二阶段估计的系数之间的差异,
+如果 P 值小于 0.05，则拒绝原假设，即存在内生性问题'
+
+############################################################ 兩階段 ################################################
+# 2）发现存在内生性后跑两阶段，时间分群:（2002-2022一群，2010-2022一群，分别跑roa,roe,eps）
+head(alldata_after2010)
+head(alldata_before2010)
+
+############################## 2010-2022 ################################################
+#工具變量
+ESG_mean <- (alldata_without_na[, 6] + alldata_without_na[, 7] + alldata_without_na[, 8]) / 3
+ESG_sum <- (alldata_without_na[, 6] + alldata_without_na[, 7] + alldata_without_na[, 8])
+alldata_without_na <- cbind(alldata_without_na[, 1:8], ESG_sum, ESG_mean, alldata_without_na[, 9:17])
+E_log <- log(alldata_without_na$esg_e)
+S_log <- log(alldata_without_na$esg_s)
+G_log <- log(alldata_without_na$esg_g)
+alldata_without_na <- cbind(alldata_without_na[, 1:10], E_log, S_log, G_log, alldata_without_na[, 11:19])
+alldata_without_na$E_log[alldata_without_na$E_log == -Inf] <- 0
+
+alldata_after2010 <- alldata_without_na[alldata_without_na$year > 2009, ]
+
+##roe
+first_roe_after2010 <- ivreg(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
+                            marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = alldata_after2010)
+lm_roe_after2010 <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
+                             data = alldata_after2010)
+summary(lm_roe_after2010)
+summary(first_roe_after2010)
+predicted_X <- fitted(first_roe_after2010)
+second_roe_after2010 <- ivreg(roe~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_after2010)
+summary(second_roe_after2010)
+summary_second_roe_after2010 <- summary(second_roe_after2010)
+#coeftest(second_roe_after2010, vcov = vcocHC, type = "HC0")
+coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roe_after2010 <- (coef(first_roe_after2010) - coef_second_roe) / sqrt(abs(diag(vcov(first_roe_after2010)) - diag(vcov(second_roe_after2010))))# 计算 P 值
+p_value_roe_after2010 <- 2 * (1 - pnorm(abs(hausman_statistic_roe_after2010)))
+print(cbind(hausman_statistic_roe, p_value_roe))
+
+##roa
+first_roa_after2010 <- ivreg(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
+                               marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = alldata_after2010)
+lm_roa_after2010 <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
+                       data = alldata_after2010)
+summary(lm_roa_after2010)
+summary(first_roa_after2010)
+predicted_X <- fitted(first_roa_after2010)
+second_roa_after2010 <- ivreg(roa~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_after2010)
+summary(second_roa_after2010)
+summary_second_roa_after2010 <- summary(second_roa_after2010)
+#coeftest(second_roa_after2010, vcov = vcocHC, type = "HC0")
+coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roa_after2010 <- (coef(first_roa_after2010) - coef_second_roa) / sqrt(abs(diag(vcov(first_roa_after2010)) - diag(vcov(second_roa_after2010))))# 计算 P 值
+p_value_roa_after2010 <- 2 * (1 - pnorm(abs(hausman_statistic_roa_after2010)))
+print(cbind(hausman_statistic_roa, p_value_roa))
+
+##eps
+first_eps_after2010 <- ivreg(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
+                               marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = alldata_after2010)
+lm_eps_after2010 <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
+                       data = alldata_after2010)
+summary(lm_eps_after2010)
+summary(first_eps_after2010)
+predicted_X <- fitted(first_eps_after2010)
+second_eps_after2010 <- ivreg(eps~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_after2010)
+summary(second_eps_after2010)
+summary_second_eps_after2010 <- summary(second_eps_after2010)
+#coeftest(second_eps_after2010, vcov = vcocHC, type = "HC0")
+coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_eps_after2010 <- (coef(first_eps_after2010) - coef_second_eps) / sqrt(abs(diag(vcov(first_eps_after2010)) - diag(vcov(second_eps_after2010))))# 计算 P 值
+p_value_eps_after2010 <- 2 * (1 - pnorm(abs(hausman_statistic_eps_after2010)))
+print(cbind(hausman_statistic_eps, p_value_eps))
+
+# 输出结果
+hausman_statistic_roe_after2010 <- round(hausman_statistic_roe_after2010, 4)
+p_value_roe <- round(p_value_roe, 4)
+hausman_statistic_roa_after2010e <- round(hausman_statistic_roa_after2010, 4)
+p_value_roa <- round(p_value_roa, 4)
+hausman_statistic_eps_after2010 <- round(hausman_statistic_eps_after2010, 4)
+p_value_eps <- round(p_value_eps, 4)
+hausman_statistic <- cbind(hausman_statistic_roe_after2010, p_value_roe, hausman_statistic_roa_after2010, p_value_roa, hausman_statistic_eps_after2010, p_value_eps)
+print(hausman_statistic)
+setwd( "C:/Users/user/Downloads")
+sink("hausman_statistic_after2010.txt")
+bind_model <- stargazer(hausman_statistic, 
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+sink("lm_after2010.txt")
+bind_model <- stargazer(lm_roe_after2010, lm_roa_after2010, lm_eps_after2010, 
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+sink("第一階段_after2010.txt")
+bind_model <- stargazer(first_roe_after2010, first_roa_after2010, first_eps_after2010,
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+sink("第二階段_statistic_after2010.txt")
+bind_model <- stargazer(second_roe_after2010, second_roa_after2010, second_eps_after2010, 
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+############################## 2002-2022 ################################################
+##roe
+first_roe_without_na <- ivreg(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
+                               marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = alldata_without_na)
+lm_roe_without_na <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
+                       data = alldata_without_na)
+summary(lm_roe_without_na)
+summary(first_roe_without_na)
+predicted_X <- fitted(first_roe_without_na)
+second_roe_without_na <- ivreg(roe~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+summary(second_roe_without_na)
+summary_second_roe_without_na <- summary(second_roe_without_na)
+#coeftest(second_roe_without_na, vcov = vcocHC, type = "HC0")
+coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roe_without_na <- (coef(first_roe_without_na) - coef_second_roe) / sqrt(abs(diag(vcov(first_roe_without_na)) - diag(vcov(second_roe_without_na))))# 计算 P 值
+p_value_roe_without_na <- 2 * (1 - pnorm(abs(hausman_statistic_roe_without_na)))
+print(cbind(hausman_statistic_roe, p_value_roe))
+
+##roa
+first_roa_without_na <- ivreg(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
+                               marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = alldata_without_na)
+lm_roa_without_na <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
+                       data = alldata_without_na)
+summary(lm_roa_without_na)
+summary(first_roa_without_na)
+predicted_X <- fitted(first_roa_without_na)
+second_roa_without_na <- ivreg(roa~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+summary(second_roa_without_na)
+summary_second_roa_without_na <- summary(second_roa_without_na)
+#coeftest(second_roa_without_na, vcov = vcocHC, type = "HC0")
+coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roa_without_na <- (coef(first_roa_without_na) - coef_second_roa) / sqrt(abs(diag(vcov(first_roa_without_na)) - diag(vcov(second_roa_without_na))))# 计算 P 值
+p_value_roa_without_na <- 2 * (1 - pnorm(abs(hausman_statistic_roa_without_na)))
+print(cbind(hausman_statistic_roa, p_value_roa))
+
+##eps
+first_eps_without_na <- ivreg(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
+                               marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = alldata_without_na)
+lm_eps_without_na <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
+                       data = alldata_without_na)
+summary(lm_eps_without_na)
+summary(first_eps_without_na)
+predicted_X <- fitted(first_eps_without_na)
+second_eps_without_na <- ivreg(eps~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+summary(second_eps_without_na)
+summary_second_eps_without_na <- summary(second_eps_without_na)
+#coeftest(second_eps_without_na, vcov = vcocHC, type = "HC0")
+coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_eps_without_na <- (coef(first_eps_without_na) - coef_second_eps) / sqrt(abs(diag(vcov(first_eps_without_na)) - diag(vcov(second_eps_without_na))))# 计算 P 值
+p_value_eps_without_na <- 2 * (1 - pnorm(abs(hausman_statistic_eps_without_na)))
+print(cbind(hausman_statistic_eps, p_value_eps))
+
+# 输出结果
+hausman_statistic_roe_without_na <- round(hausman_statistic_roe_without_na, 4)
+p_value_roe <- round(p_value_roe, 4)
+hausman_statistic_roa_without_nae <- round(hausman_statistic_roa_without_na, 4)
+p_value_roa <- round(p_value_roa, 4)
+hausman_statistic_eps_without_na <- round(hausman_statistic_eps_without_na, 4)
+p_value_eps <- round(p_value_eps, 4)
+hausman_statistic <- cbind(hausman_statistic_roe_without_na, p_value_roe, hausman_statistic_roa_without_na, p_value_roa, hausman_statistic_eps_without_na, p_value_eps)
+print(hausman_statistic)
+setwd( "C:/Users/user/Downloads")
+sink("hausman_statistic_alltime.txt")
+bind_model <- stargazer(hausman_statistic, 
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+sink("lm_alltime.txt")
+bind_model <- stargazer(lm_roe_without_na, lm_roa_without_na, lm_eps_without_na, 
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+sink("第一階段_alltime.txt")
+bind_model <- stargazer(first_roe_without_na, first_roa_without_na, first_eps_without_na,
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+sink("第二階段_statistic_alltime.txt")
+bind_model <- stargazer(second_roe_without_na, second_roa_without_na, second_eps_without_na, 
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+'############################## 产业分群 工业 ################################################
+head(alldata_工业)
+head(alldata_金融)
+
+##roe
+first_roe_industry <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_工业)
+predicted_X <- fitted(first_roe_industry)
+second_roe_industry <- ivreg(roe~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_工业)
+summary(second_roe_industry)
+summary_second_roe_industry <- summary(second_roe_industry)
+coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roe_industry <- (coef(first_roe_industry) - coef_second_roe) / sqrt(abs(diag(vcov(first_roe_industry)) - diag(vcov(second_roe_industry))))# 计算 P 值
+p_value_roe_industry <- 2 * (1 - pnorm(abs(hausman_statistic_roe_industry)))
+print(cbind(hausman_statistic_roe, p_value_roe))
+
+##roa
+first_roa_industry <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_工业)
+predicted_X <- fitted(first_roa_industry)
+second_roa_industry <- ivreg(roa~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_工业)
+summary(second_roa_industry)
+summary_second_roa_industry <- summary(second_roa_industry)
+coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roa_industry <- (coef(first_roa_industry) - coef_second_roa) / sqrt(abs(diag(vcov(first_roa_industry)) - diag(vcov(second_roa_industry))))# 计算 P 值
+p_value_roa_industry <- 2 * (1 - pnorm(abs(hausman_statistic_roa_industry)))
+print(cbind(hausman_statistic_roa, p_value_roa))
+
+##eps
+first_eps_industry <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_工业)
+predicted_X <- fitted(first_eps_industry)
+second_eps_industry <- ivreg(eps~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_工业)
+summary(second_eps_industry)
+summary_second_eps_industry <- summary(second_eps_industry)
+coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_eps_industry <- (coef(first_eps_industry) - coef_second_eps) / sqrt(abs(diag(vcov(first_eps_industry)) - diag(vcov(second_eps_industry))))# 计算 P 值
+p_value_eps_industry <- 2 * (1 - pnorm(abs(hausman_statistic_eps_industry)))
+print(cbind(hausman_statistic_eps, p_value_eps))
+
+# 输出结果
+hausman_statistic_roe_industry <- round(hausman_statistic_roe_industry, 4)
+p_value_roe <- round(p_value_roe, 4)
+hausman_statistic_roa_industry <- round(hausman_statistic_roa_industry, 4)
+p_value_roa <- round(p_value_roa, 4)
+hausman_statistic_eps_industry <- round(hausman_statistic_eps_industry, 4)
+p_value_eps <- round(p_value_eps, 4)
+hausman_statistic <- cbind(hausman_statistic_roe_industry, p_value_roe, hausman_statistic_roa_industry, p_value_roa, hausman_statistic_eps_industry, p_value_eps)
+print(hausman_statistic)
+sink("hausman_statistic_industry.txt")
+bind_model <- stargazer(hausman_statistic, 
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+############################## 产业分群 金融 ################################################
+# 3）产业分群（工业化，金融业）
+##roe
+first_roe_finance <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_金融)
+predicted_X <- fitted(first_roe_finance)
+second_roe_finance <- ivreg(roe~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_金融)
+summary(second_roe_finance)
+summary_second_roe_finance <- summary(second_roe_finance)
+coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roe_finance <- (coef(first_roe_finance) - coef_second_roe) / sqrt(abs(diag(vcov(first_roe_finance)) - diag(vcov(second_roe_finance))))# 计算 P 值
+p_value_roe_finance <- 2 * (1 - pnorm(abs(hausman_statistic_roe_finance)))
+print(cbind(hausman_statistic_roe, p_value_roe))
+
+##roa
+first_roa_finance <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_金融)
+predicted_X <- fitted(first_roa_finance)
+second_roa_finance <- ivreg(roa~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_金融)
+summary(second_roa_finance)
+summary_second_roa_finance <- summary(second_roa_finance)
+coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roa_finance <- (coef(first_roa_finance) - coef_second_roa) / sqrt(abs(diag(vcov(first_roa_finance)) - diag(vcov(second_roa_finance))))# 计算 P 值
+p_value_roa_finance <- 2 * (1 - pnorm(abs(hausman_statistic_roa_finance)))
+print(cbind(hausman_statistic_roa, p_value_roa))
+
+##eps
+first_eps_finance <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_金融)
+predicted_X <- fitted(first_eps_finance)
+second_eps_finance <- ivreg(eps~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_金融)
+summary(second_eps_finance)
+summary_second_eps_finance <- summary(second_eps_finance)
+coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_eps_finance <- (coef(first_eps_finance) - coef_second_eps) / sqrt(abs(diag(vcov(first_eps_finance)) - diag(vcov(second_eps_finance))))# 计算 P 值
+p_value_eps_finance <- 2 * (1 - pnorm(abs(hausman_statistic_eps_finance)))
+print(cbind(hausman_statistic_eps, p_value_eps))
+
+# 输出结果
+hausman_statistic_roe_finance <- round(hausman_statistic_roe_finance, 4)
+p_value_roe <- round(p_value_roe, 4)
+hausman_statistic_roa_finance <- round(hausman_statistic_roa_finance, 4)
+p_value_roa <- round(p_value_roa, 4)
+hausman_statistic_eps_finance <- round(hausman_statistic_eps_finance, 4)
+p_value_eps <- round(p_value_eps, 4)
+hausman_statistic <- cbind(hausman_statistic_roe_finance, p_value_roe, hausman_statistic_roa_finance, p_value_roa, hausman_statistic_eps_finance, p_value_eps)
+print(hausman_statistic)
+sink("hausman_statistic_finance.txt")
+bind_model <- stargazer(hausman_statistic, 
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+############################## 绩效排序分群 前30% ################################################
+alldata_ROE_top30 %>% head()
+alldata_ROA_top30 %>% head()
+alldata_EPS_top30 %>% head()
+
+##roe
+first_roe_top30 <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_ROE_top30)
+predicted_X <- fitted(first_roe_top30)
+second_roe_top30 <- ivreg(roe~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_ROE_top30)
+summary(second_roe_top30)
+summary_second_roe_top30 <- summary(second_roe_top30)
+coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roe_top30 <- (coef(first_roe_top30) - coef_second_roe) / sqrt(abs(diag(vcov(first_roe_top30)) - diag(vcov(second_roe_top30))))# 计算 P 值
+p_value_roe_top30 <- 2 * (1 - pnorm(abs(hausman_statistic_roe_top30)))
+print(cbind(hausman_statistic_roe, p_value_roe))
+
+##roa
+first_roa_top30 <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_ROA_top30)
+predicted_X <- fitted(first_roa_top30)
+second_roa_top30 <- ivreg(roa~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_ROA_top30)
+summary(second_roa_top30)
+summary_second_roa_top30 <- summary(second_roa_top30)
+coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roa_top30 <- (coef(first_roa_top30) - coef_second_roa) / sqrt(abs(diag(vcov(first_roa_top30)) - diag(vcov(second_roa_top30))))# 计算 P 值
+p_value_roa_top30 <- 2 * (1 - pnorm(abs(hausman_statistic_roa_top30)))
+print(cbind(hausman_statistic_roa, p_value_roa))
+
+##eps
+first_eps_top30 <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_EPS_top30)
+predicted_X <- fitted(first_eps_top30)
+second_eps_top30 <- ivreg(eps~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_EPS_top30)
+summary(second_eps_top30)
+summary_second_eps_top30 <- summary(second_eps_top30)
+coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_eps_top30 <- (coef(first_eps_top30) - coef_second_eps) / sqrt(abs(diag(vcov(first_eps_top30)) - diag(vcov(second_eps_top30))))# 计算 P 值
+p_value_eps_top30 <- 2 * (1 - pnorm(abs(hausman_statistic_eps_top30)))
+print(cbind(hausman_statistic_eps, p_value_eps))
+
+# 输出结果
+hausman_statistic_roe_top30 <- round(hausman_statistic_roe_top30, 4)
+p_value_roe <- round(p_value_roe, 4)
+hausman_statistic_roa_top30 <- round(hausman_statistic_roa_top30, 4)
+p_value_roa <- round(p_value_roa, 4)
+hausman_statistic_eps_top30 <- round(hausman_statistic_eps_top30, 4)
+p_value_eps <- round(p_value_eps, 4)
+hausman_statistic <- cbind(hausman_statistic_roe_top30, p_value_roe, hausman_statistic_roa_top30, p_value_roa, hausman_statistic_eps_top30, p_value_eps)
+print(hausman_statistic)
+sink("hausman_statistic_top30.txt")
+bind_model <- stargazer(hausman_statistic, 
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+############################## 绩效排序分群 后30% ################################################
+# 4）绩效排序分群（前30%，后30%）
+alldata_ROE_btm30 %>% head()
+alldata_ROA_btm30 %>% head()
+alldata_EPS_btm30 %>% head()
+
+##roe
+first_roe_btm30 <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_ROE_btm30)
+predicted_X <- fitted(first_roe_btm30)
+second_roe_btm30 <- ivreg(roe~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_ROE_btm30)
+summary(second_roe_btm30)
+summary_second_roe_btm30 <- summary(second_roe_btm30)
+coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roe_btm30 <- (coef(first_roe_btm30) - coef_second_roe) / sqrt(abs(diag(vcov(first_roe_btm30)) - diag(vcov(second_roe_btm30))))# 计算 P 值
+p_value_roe_btm30 <- 2 * (1 - pnorm(abs(hausman_statistic_roe_btm30)))
+print(cbind(hausman_statistic_roe, p_value_roe))
+
+##roa
+first_roa_btm30 <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_ROA_btm30)
+predicted_X <- fitted(first_roa_btm30)
+second_roa_btm30 <- ivreg(roa~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_ROA_btm30)
+summary(second_roa_btm30)
+summary_second_roa_btm30 <- summary(second_roa_btm30)
+coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_roa_btm30 <- (coef(first_roa_btm30) - coef_second_roa) / sqrt(abs(diag(vcov(first_roa_btm30)) - diag(vcov(second_roa_btm30))))# 计算 P 值
+p_value_roa_btm30 <- 2 * (1 - pnorm(abs(hausman_statistic_roa_btm30)))
+print(cbind(hausman_statistic_roa, p_value_roa))
+
+##eps
+first_eps_btm30 <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_EPS_btm30)
+predicted_X <- fitted(first_eps_btm30)
+second_eps_btm30 <- ivreg(eps~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_EPS_btm30)
+summary(second_eps_btm30)
+summary_second_eps_btm30 <- summary(second_eps_btm30)
+coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
+# 重新计算 Hausman 统计量
+hausman_statistic_eps_btm30 <- (coef(first_eps_btm30) - coef_second_eps) / sqrt(abs(diag(vcov(first_eps_btm30)) - diag(vcov(second_eps_btm30))))# 计算 P 值
+p_value_eps_btm30 <- 2 * (1 - pnorm(abs(hausman_statistic_eps_btm30)))
+print(cbind(hausman_statistic_eps, p_value_eps))
+
+# 输出结果
+hausman_statistic_roe_btm30 <- round(hausman_statistic_roe_btm30, 4)
+p_value_roe <- round(p_value_roe, 4)
+hausman_statistic_roa_btm30 <- round(hausman_statistic_roa_btm30, 4)
+p_value_roa <- round(p_value_roa, 4)
+hausman_statistic_eps_btm30 <- round(hausman_statistic_eps_btm30, 4)
+p_value_eps <- round(p_value_eps, 4)
+hausman_statistic <- cbind(hausman_statistic_roe_btm30, p_value_roe, hausman_statistic_roa_btm30, p_value_roa, hausman_statistic_eps_btm30, p_value_eps)
+print(hausman_statistic)
+sink("hausman_statistic_btm30.txt")
+bind_model <- stargazer(hausman_statistic, 
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+############################## 绩效排序分群 后30% ################################################
+# 5）3个分群分为：对当年的esg对当年财务绩效，前期esg对当年财务绩效，两种情况
+# 使用table函数查看每年各公司代码的频数分布
+year_company_freq <- table(alldata_without_na$year, alldata_without_na$companycode)
+# 找到每年都出现的公司代码
+common_company_codes <- rownames(year_company_freq)[apply(year_company_freq, 1, function(x) all(x > 0))]
+# 筛选出符合条件的数据行
+filtered_data <- alldata_without_na[alldata_without_na$companycode %in% common_company_codes, ]
+'
+# 6）最后：对两阶段做vif共线性
+# 7）adf单根检验
+# 8）bic最佳滞后期
+# 9）granger因果检验
+
+
+
