@@ -34,6 +34,7 @@ library(readxl)
 # 9）granger因果检验
 
 #问题：步骤1算完成了？接下来跑2？
+############################## 資料整理 ################################################
 
 #自變數
 E_after2010 <- read_excel("C:/Users/user/Downloads/ESGdata(自變數)-2010后.xlsx", sheet = 1)
@@ -408,6 +409,285 @@ model_roe2 <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + divide
 model_roa2 <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
 model_eps2 <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
 
+library(tseries)
+
+adf_roa <- adf.test(alldata_without_na$roa)
+adf_roe <- adf.test(alldata_without_na$roe)
+adf_eps <- adf.test(alldata_without_na$eps)
+adf_roa
+summary(adf_roa)
+adf_roe
+adf_eps
+
+##另一個adf套件
+library(urca)
+names(alldata_without_na)
+
+roe_none = ur.df(alldata_without_na$roe, type = "none", selectlags = "BIC")
+summary(roe_none)
+roe_drift = ur.df(alldata_without_na$roe, type = "drift", selectlags = "BIC")
+summary(roe_drift)
+roe_trend = ur.df(alldata_without_na$roe, type = "trend", selectlags = "BIC")
+summary(roe_trend)
+sink("roe_adf.txt")
+bind_model <- stargazer(roe_none, roe_drift, roe_trend,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+roa_none = ur.df(alldata_without_na$roa, type = "none", selectlags = "BIC")
+summary(roa_none)
+roa_drift = ur.df(alldata_without_na$roa, type = "drift", selectlags = "BIC")
+summary(roa_drift)
+roa_trend = ur.df(alldata_without_na$roa, type = "trend", selectlags = "BIC")
+summary(roa_trend)
+sink("roa_adf.txt")
+bind_model <- stargazer(roa_none, roa_drift, roa_trend,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+eps_none = ur.df(alldata_without_na$eps, type = "none", selectlags = "BIC")
+summary(eps_none)
+eps_drift = ur.df(alldata_without_na$eps, type = "drift", selectlags = "BIC")
+summary(eps_drift)
+eps_trend = ur.df(alldata_without_na$eps, type = "trend", selectlags = "BIC")
+summary(eps_trend)
+sink("eps_adf.txt")
+bind_model <- stargazer(eps_none, eps_drift, eps_trend,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+##esg的adf
+esg_e_none = ur.df(alldata_without_na$esg_e, type = "none", selectlags = "BIC")
+summary(esg_e_none)
+esg_e_drift = ur.df(alldata_without_na$esg_e, type = "drift", selectlags = "BIC")
+summary(esg_e_drift)
+esg_e_trend = ur.df(alldata_without_na$esg_e, type = "trend", selectlags = "BIC")
+summary(esg_e_trend)
+sink("esg_e_adf.txt")
+bind_model <- stargazer(esg_e_none, esg_e_drift, esg_e_trend,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+esg_s_none = ur.df(alldata_without_na$esg_s, type = "none", selectlags = "BIC")
+summary(esg_s_none)
+esg_s_drift = ur.df(alldata_without_na$esg_s, type = "drift", selectlags = "BIC")
+summary(esg_s_drift)
+esg_s_trend = ur.df(alldata_without_na$esg_s, type = "trend", selectlags = "BIC")
+summary(esg_s_trend)
+sink("esg_s_adf.txt")
+bind_model <- stargazer(esg_s_none, esg_s_drift, esg_s_trend,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+esg_g_none = ur.df(alldata_without_na$esg_g, type = "none", selectlags = "BIC")
+summary(esg_g_none)
+esg_g_drift = ur.df(alldata_without_na$esg_g, type = "drift", selectlags = "BIC")
+summary(esg_g_drift)
+esg_g_trend = ur.df(alldata_without_na$esg_g, type = "trend", selectlags = "BIC")
+summary(esg_g_trend)
+sink("esg_g_adf.txt")
+bind_model <- stargazer(esg_g_none, esg_g_drift, esg_g_trend,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+# 绘制原始时间序列和差分时间序列
+plot(alldata_without_na$roa, type = "l", main = "ROA Time Series and Differenced Series")
+# 添加标签
+legend("topleft", legend = c("Original Series", "Differenced Series"), col = c("black", "red"), lty = 1)
+# 在图上标记 ADF 检验结果
+abline(v = adf_roa$lag, col = "blue", lty = 2) # 标记滞后阶数
+text(adf_roa$lag + 1, par("usr")[4], labels = paste("Lag:", adf_roa$lag), col = "blue") # 添加滞后阶数标签
+abline(h = adf_roa$statistic, col = "green", lty = 2) # 标记检验统计量
+text(par("usr")[2], adf_roa$statistic, labels = paste("Statistic:", round(adf_roa$statistic, 2)), col = "green") # 添加检验统计量标签
+
+# 捕獲檢定結果的文本信息
+output_roa <- capture.output(adf_roa)
+output_roe <- capture.output(adf_roe)
+output_eps <- capture.output(adf_eps)
+# 寫入到文本文件
+sink("adf.txt")
+cat("ADF test for ROA:\n")
+cat(output_roa)
+cat("\n\n")
+cat("ADF test for ROE:\n")
+cat(output_roe)
+cat("\n\n")
+cat("ADF test for EPS:\n")
+cat(output_eps)
+sink()
+
+cor_data <- alldata_without_na[,c(3:17)]
+correlation_matrix <- cor(cor_data)
+correlation_matrix
+sink("correlation_matrix.txt")
+bind_model <- stargazer(correlation_matrix,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+#共綫性
+library(stargazer)
+library(car)
+vif_roe <- vif(model_roe2)
+vif_roa <- vif(model_roa2)
+vif_eps <- vif(model_eps2)
+sink("vif.txt")
+bind_model <- stargazer(vif_roe, vif_roa, vif_eps,
+                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+esg <- alldata_without_na$esg_e+alldata_without_na$esg_s+alldata_without_na$esg_g
+data_esg <- cbind(alldata_without_na[,c(1:5)], esg) %>% as.data.frame()
+granger_roe_to_e <- grangertest(alldata_without_na$roe~alldata_without_na$esg_e, data = data_esg, order = 1) #不顯著
+granger_roe_to_e
+granger_roe_to_s <- grangertest(alldata_without_na$roe~alldata_without_na$esg_s, data = data_esg, order = 1) #1期
+granger_roe_to_s
+granger_roe_to_g <- grangertest(alldata_without_na$roe~alldata_without_na$esg_g, data = data_esg, order = 1) #不顯著
+granger_roe_to_g
+
+granger_roa_to_e <- grangertest(alldata_without_na$roa~alldata_without_na$esg_e, data = data_esg, order = 1)#不顯著
+granger_roa_to_e
+granger_roa_to_s <- grangertest(alldata_without_na$roa~alldata_without_na$esg_s, data = data_esg, order = 1)#1期
+granger_roa_to_s
+granger_roa_to_g <- grangertest(alldata_without_na$roa~alldata_without_na$esg_g, data = data_esg, order = 5)#5期
+granger_roa_to_g
+
+granger_eps_to_e <- grangertest(alldata_without_na$eps~alldata_without_na$esg_e, data = data_esg, order = 1)#1期
+granger_eps_to_e
+granger_eps_to_s <- grangertest(alldata_without_na$eps~alldata_without_na$esg_s, data = data_esg, order = 6)#6期
+granger_eps_to_s
+granger_eps_to_g <- grangertest(alldata_without_na$eps~alldata_without_na$esg_g, data = data_esg, order = 1)#不顯著
+granger_eps_to_g
+
+granger_roe_to_e #不顯著
+granger_roe_to_s #1期
+granger_roe_to_g#不顯著
+granger_roa_to_e#不顯著
+granger_roa_to_s#1期
+granger_roa_to_g#5期
+granger_eps_to_e#1期
+granger_eps_to_s#6期
+granger_eps_to_g#不顯著
+sink("granger.txt")
+bind_model <- stargazer(granger_roe_to_e,
+                        granger_roe_to_s,
+                        granger_roe_to_g,
+
+                        model.names = TRUE)
+sink()
+
+
+##双向因果检定
+granger_roe_to_e_reverse <- grangertest(alldata_without_na$esg_e~alldata_without_na$roe, data = data_esg, order = 8)
+granger_roe_to_e_reverse
+granger_roe_to_s_reverse <- grangertest(alldata_without_na$esg_s~alldata_without_na$roe, data = data_esg, order = 2)
+granger_roe_to_s_reverse
+granger_roe_to_g_reverse <- grangertest(alldata_without_na$esg_g~alldata_without_na$roe, data = data_esg, order = 1)
+granger_roe_to_g_reverse
+
+granger_roa_to_e_reverse <- grangertest(alldata_without_na$esg_e~alldata_without_na$roa, data = data_esg, order = 1)
+granger_roa_to_e_reverse
+granger_roa_to_s_reverse <- grangertest(alldata_without_na$esg_s~alldata_without_na$roa, data = data_esg, order = 1)
+granger_roa_to_s_reverse
+granger_roa_to_g_reverse <- grangertest(alldata_without_na$esg_g~alldata_without_na$roa, data = data_esg, order = 1)
+granger_roa_to_g_reverse
+
+granger_eps_to_e_reverse <- grangertest(alldata_without_na$esg_e~alldata_without_na$eps, data = data_esg, order = 1)
+granger_eps_to_e_reverse
+granger_eps_to_s_reverse <- grangertest(alldata_without_na$esg_s~alldata_without_na$eps, data = data_esg, order = 1)
+granger_eps_to_s_reverse
+granger_eps_to_g_reverse <- grangertest(alldata_without_na$esg_g~alldata_without_na$eps, data = data_esg, order = 2)
+granger_eps_to_g_reverse
+
+granger_roe_to_e_reverse #第8期
+granger_roe_to_s_reverse #第2期
+granger_roe_to_g_reverse #第1期
+granger_roa_to_e_reverse #第1期
+granger_roa_to_s_reverse #第1期
+granger_roa_to_g_reverse #第1期
+granger_eps_to_e_reverse #第1期
+granger_eps_to_s_reverse #第1期
+granger_eps_to_g_reverse #第2期
+
+sink("granger_reverse.txt") 
+bind_model <- stargazer(granger_roe_reverse, granger_roa_reverse,  granger_eps_reverse,
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+##BIC最佳滯後期
+library(MASS)
+
+# 创建一个空的向量来存储 BIC 值
+bic_values <- c()
+
+# 设置自变量数量的范围，例如从 1 到 10
+max_p <- 20
+
+# 计算每个自变量数量下的模型的 BIC 值
+for (p in 1:max_p) {
+  # 構建模型
+  formula <- as.formula(paste("roe ~ ", paste0(names(alldata_without_na)[2:(p + 1)], collapse = " + ")))
+  model <- lm(formula, data = alldata_without_na)
+  
+  # 计算 BIC 值
+  bic_values[p] <- BIC(model)
+}
+# 找到 BIC 值最小的自变量数量
+best_bic_roe <- which.min(bic_values)
+# 输出结果
+print(paste("Best number of predictors according to BIC:", best_bic_roe))
+print(bic_values)
+# 计算每个自变量数量下的模型的 BIC 值
+bic_values <- c()
+for (p in 1:max_p) {
+  # 構建模型
+  formula <- as.formula(paste("roa ~ ", paste0(names(alldata_without_na)[2:(p + 1)], collapse = " + ")))
+  model <- lm(formula, data = alldata_without_na)
+  
+  # 计算 BIC 值
+  bic_values[p] <- BIC(model)
+}
+# 找到 BIC 值最小的自变量数量
+best_bic_roa <- which.min(bic_values)
+# 输出结果
+print(paste("Best number of predictors according to BIC:", best_bic_roa))
+# 计算每个自变量数量下的模型的 BIC 值
+bic_values <- c()
+for (p in 1:max_p) {
+  # 構建模型
+  formula <- as.formula(paste("eps ~ ", paste0(names(alldata_without_na)[2:(p + 1)], collapse = " + ")))
+  model <- lm(formula, data = alldata_without_na)
+  
+  # 计算 BIC 值
+  bic_values[p] <- BIC(model)
+}
+# 找到 BIC 值最小的自变量数量
+best_bic_eps <- which.min(bic_values)
+# 输出结果
+print(paste("Best number of predictors according to BIC:", best_bic_eps))
+sink("bic.txt")
+cat("In ROE Model, the best number of predictors according to BIC:\n")
+cat(best_bic_roe)
+cat("\n\n")
+cat("In ROA Model, the best number of predictors according to BIC:\n")
+cat(best_bic_roa)
+cat("\n\n")
+cat("In EPS Model, the best number of predictors according to BIC:\n")
+cat(best_bic_eps)
+sink()
+############################## 内生性 ################################################
+#1)
+model_roe2 <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+model_roa2 <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+model_eps2 <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
+
 ##roe
 first_roe <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
 predicted_X <- fitted(first_roe)
@@ -480,86 +760,97 @@ sink()
 'hausman 计算了第一阶段估计的系数和第二阶段估计的系数之间的差异,
 如果 P 值小于 0.05，则拒绝原假设，即存在内生性问题'
 
+
 ############################################################ 兩階段 ################################################
 # 2）发现存在内生性后跑两阶段，时间分群:（2002-2022一群，2010-2022一群，分别跑roa,roe,eps）
 head(alldata_after2010)
 head(alldata_before2010)
 
 ############################## 2010-2022 ################################################
+library(readxl)
+library(dplyr)
+sp_company_industry  <- read_excel("C:/Users/user/Downloads/S_P公司產業(1).xlsx")
+# Rename columns for merging
+colnames(sp_company_industry)[colnames(sp_company_industry) == "股票代號"] <- "companycode"
+colnames(sp_company_industry)[colnames(sp_company_industry) == "全球行業分類標準部門"] <- "產業"
+# Merge dataframes
+merged_data <- left_join(alldata_without_na, sp_company_industry, by = "companycode")
+merged_data <- merged_data[,c(1,19,2:17)]
+alldata_without_na <- merged_data
+rm(merged_data)
+
 #工具變量
-ESG_mean <- (alldata_without_na[, 6] + alldata_without_na[, 7] + alldata_without_na[, 8]) / 3
-ESG_sum <- (alldata_without_na[, 6] + alldata_without_na[, 7] + alldata_without_na[, 8])
-alldata_without_na <- cbind(alldata_without_na[, 1:8], ESG_sum, ESG_mean, alldata_without_na[, 9:17])
-E_log <- log(alldata_without_na$esg_e)
-S_log <- log(alldata_without_na$esg_s)
-G_log <- log(alldata_without_na$esg_g)
-alldata_without_na <- cbind(alldata_without_na[, 1:10], E_log, S_log, G_log, alldata_without_na[, 11:19])
-alldata_without_na$E_log[alldata_without_na$E_log == -Inf] <- 0
+#write.csv(alldata_without_na, "merged_alldata.csv")
+# 根据產業和年份进行分组，并计算 esg_e、esg_s 和 esg_g 的平均值
+grouped_data <- alldata_without_na %>%
+  group_by(產業, year) %>%
+  summarize(
+    avg_esg = mean(esg_e+esg_s+esg_g, na.rm = TRUE),
+    avg_e = mean(esg_e, na.rm = TRUE),
+    avg_s = mean(esg_s, na.rm = TRUE),
+    avg_g = mean(esg_g, na.rm = TRUE),
+    
+  )
+merged_data <- left_join(alldata_without_na, grouped_data, by = c("產業","year"))
+alldata_without_na <- merged_data[,c(1:9,19:22,10:18)]
+rm(merged_data,grouped_data)
 
 alldata_after2010 <- alldata_without_na[alldata_without_na$year > 2009, ]
 
 ##roe
-first_roe_after2010 <- ivreg(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
-                            marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
-                             data = alldata_after2010)
-lm_roe_after2010 <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
-                             data = alldata_after2010)
+'lm_roe_after2010 <- ivreg(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                            avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = alldata_after2010)'
+lm_roe_after2010 <- ivreg(roe~esg_e + esg_s  + marketcap_log  + dividend|  
+                            avg_e + avg_s  + marketcap_log  + dividend, 
+                          data = alldata_after2010)
 summary(lm_roe_after2010)
-summary(first_roe_after2010)
-predicted_X <- fitted(first_roe_after2010)
-second_roe_after2010 <- ivreg(roe~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_after2010)
-summary(second_roe_after2010)
-summary_second_roe_after2010 <- summary(second_roe_after2010)
+summary_second_roe_after2010 <- summary(lm_roe_after2010)
 #coeftest(second_roe_after2010, vcov = vcocHC, type = "HC0")
 coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
 se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
 # 重新计算 Hausman 统计量
-hausman_statistic_roe_after2010 <- (coef(first_roe_after2010) - coef_second_roe) / sqrt(abs(diag(vcov(first_roe_after2010)) - diag(vcov(second_roe_after2010))))# 计算 P 值
+"用了ivreg表示是直接跑了兩階段回歸，并且不需要做hausmantest"
+'hausman_statistic_roe_after2010 <- (coef(first_roe_after2010) - coef_second_roe) / sqrt(abs(diag(vcov(first_roe_after2010)) - diag(vcov(second_roe_after2010))))# 计算 P 值
 p_value_roe_after2010 <- 2 * (1 - pnorm(abs(hausman_statistic_roe_after2010)))
-print(cbind(hausman_statistic_roe, p_value_roe))
+print(cbind(hausman_statistic_roe, p_value_roe))'
 
 ##roa
-first_roa_after2010 <- ivreg(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
-                               marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
-                             data = alldata_after2010)
-lm_roa_after2010 <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
-                       data = alldata_after2010)
+'lm_roa_after2010 <- ivreg(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                            avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                          data = alldata_after2010)'
+lm_roa_after2010 <- ivreg(roa~esg_e + esg_s  + marketcap_log  + dividend|  
+                            avg_e + avg_s  + marketcap_log  + dividend, 
+                          data = alldata_after2010)
 summary(lm_roa_after2010)
-summary(first_roa_after2010)
-predicted_X <- fitted(first_roa_after2010)
-second_roa_after2010 <- ivreg(roa~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_after2010)
-summary(second_roa_after2010)
-summary_second_roa_after2010 <- summary(second_roa_after2010)
+summary_second_roa_after2010 <- summary(lm_roa_after2010)
 #coeftest(second_roa_after2010, vcov = vcocHC, type = "HC0")
 coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
 se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
 # 重新计算 Hausman 统计量
-hausman_statistic_roa_after2010 <- (coef(first_roa_after2010) - coef_second_roa) / sqrt(abs(diag(vcov(first_roa_after2010)) - diag(vcov(second_roa_after2010))))# 计算 P 值
+'hausman_statistic_roa_after2010 <- (coef(first_roa_after2010) - coef_second_roa) / sqrt(abs(diag(vcov(first_roa_after2010)) - diag(vcov(second_roa_after2010))))# 计算 P 值
 p_value_roa_after2010 <- 2 * (1 - pnorm(abs(hausman_statistic_roa_after2010)))
-print(cbind(hausman_statistic_roa, p_value_roa))
+print(cbind(hausman_statistic_roa, p_value_roa))'
 
 ##eps
-first_eps_after2010 <- ivreg(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
-                               marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
-                             data = alldata_after2010)
-lm_eps_after2010 <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
-                       data = alldata_after2010)
+'lm_eps_after2010 <- ivreg(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                            avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                          data = alldata_after2010)'
+lm_eps_after2010 <- ivreg(eps~esg_e  + esg_s + marketcap_log  + dividend|  
+                            avg_e  + avg_s + marketcap_log  + dividend, 
+                          data = alldata_after2010)
 summary(lm_eps_after2010)
-summary(first_eps_after2010)
-predicted_X <- fitted(first_eps_after2010)
-second_eps_after2010 <- ivreg(eps~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_after2010)
-summary(second_eps_after2010)
-summary_second_eps_after2010 <- summary(second_eps_after2010)
+summary_second_eps_after2010 <- summary(lm_eps_after2010)
 #coeftest(second_eps_after2010, vcov = vcocHC, type = "HC0")
 coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
 se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
 # 重新计算 Hausman 统计量
-hausman_statistic_eps_after2010 <- (coef(first_eps_after2010) - coef_second_eps) / sqrt(abs(diag(vcov(first_eps_after2010)) - diag(vcov(second_eps_after2010))))# 计算 P 值
+'hausman_statistic_eps_after2010 <- (coef(first_eps_after2010) - coef_second_eps) / sqrt(abs(diag(vcov(first_eps_after2010)) - diag(vcov(second_eps_after2010))))# 计算 P 值
 p_value_eps_after2010 <- 2 * (1 - pnorm(abs(hausman_statistic_eps_after2010)))
-print(cbind(hausman_statistic_eps, p_value_eps))
+print(cbind(hausman_statistic_eps, p_value_eps))'
 
 # 输出结果
-hausman_statistic_roe_after2010 <- round(hausman_statistic_roe_after2010, 4)
+'hausman_statistic_roe_after2010 <- round(hausman_statistic_roe_after2010, 4)
 p_value_roe <- round(p_value_roe, 4)
 hausman_statistic_roa_after2010e <- round(hausman_statistic_roa_after2010, 4)
 p_value_roa <- round(p_value_roa, 4)
@@ -572,116 +863,457 @@ sink("hausman_statistic_after2010.txt")
 bind_model <- stargazer(hausman_statistic, 
                         title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
                         model.names = TRUE)
-sink()
+sink()'
 
-sink("lm_after2010.txt")
+sink("lm_after2010_es.txt")
 bind_model <- stargazer(lm_roe_after2010, lm_roa_after2010, lm_eps_after2010, 
                         title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
                         model.names = TRUE)
 sink()
-sink("第一階段_after2010.txt")
-bind_model <- stargazer(first_roe_after2010, first_roa_after2010, first_eps_after2010,
+'sink("第二階段_statistic_after2010.txt")
+bind_model <- stargazer(second_roe_after2010, second_roa_after2010, second_eps_after2010, 
                         title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
                         model.names = TRUE)
-sink()
-sink("第二階段_statistic_after2010.txt")
-bind_model <- stargazer(second_roe_after2010, second_roa_after2010, second_eps_after2010, 
+sink()'
+##滯後一期財務績效
+library(dplyr)
+alldata_without_na <- arrange(alldata_without_na, companycode, year)
+# 使用 lag 函数将每个变量向后延后一期
+company_list <- split(alldata_without_na, f = alldata_without_na$companycode)
+lag_data <- NULL
+for (i in 1:length(company_list)) {
+  temlist <- company_list[[i]]
+  lag_esg_e <- c(NA, temlist$esg_e) %>% as.data.frame()
+  lag_esg_e <- lag_esg_e[c(1:(nrow(lag_esg_e)-1)),] %>% as.data.frame()
+  lag_esg_s <- c(NA, temlist$esg_s) %>% as.data.frame()
+  lag_esg_s <- lag_esg_s[c(1:(nrow(lag_esg_s)-1)),] %>% as.data.frame()
+  lag_esg_g <- c(NA, temlist$esg_g) %>% as.data.frame()
+  lag_esg_g <- lag_esg_g[c(1:(nrow(lag_esg_g)-1)),] %>% as.data.frame()
+  
+  lag_avg_esg <- c(NA, temlist$avg_esg) %>% as.data.frame()
+  lag_avg_esg <- lag_avg_esg[c(1:(nrow(lag_avg_esg)-1)),] %>% as.data.frame()
+  lag_avg_esg_e <- c(NA, temlist$avg_e) %>% as.data.frame()
+  lag_avg_esg_e <- lag_avg_esg_e[c(1:(nrow(lag_avg_esg_e)-1)),] %>% as.data.frame()
+  lag_avg_esg_s <- c(NA, temlist$avg_s) %>% as.data.frame()
+  lag_avg_esg_s <- lag_avg_esg_s[c(1:(nrow(lag_avg_esg_s)-1)),] %>% as.data.frame()
+  lag_avg_esg_g <- c(NA, temlist$avg_g) %>% as.data.frame()
+  lag_avg_esg_g <- lag_avg_esg_g[c(1:(nrow(lag_avg_esg_g)-1)),] %>% as.data.frame()
+  
+  temlist$esg_e <- lag_esg_e
+  temlist$esg_s <- lag_esg_s
+  temlist$esg_g <- lag_esg_g
+  
+  temlist$avg_esg <- lag_avg_esg
+  temlist$avg_e <- lag_avg_esg_e
+  temlist$avg_s <- lag_avg_esg_s
+  temlist$avg_g <- lag_avg_esg_g
+  rownames(temlist) <- NULL
+  
+  lag_data <- rbind(lag_data, temlist)
+}
+lag_data <- as.data.frame(lag_data)
+lag_data <- na.omit(lag_data)
+colnames(lag_data$esg_e) = "lag_esg_e"
+colnames(lag_data$esg_s) = "lag_esg_s"
+colnames(lag_data$esg_g) = "lag_esg_g"
+colnames(lag_data$avg_esg) = "lag_avg_esg"
+colnames(lag_data$avg_e) = "lag_avg_esg_e"
+colnames(lag_data$avg_s) = "lag_avg_esg_s"
+colnames(lag_data$avg_g) = "lag_avg_esg_g"
+lag_data_after2010 <- lag_data[lag_data$year > 2009, ]
+
+##roe
+'lm_roe_after2010 <- ivreg(roe~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                            avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                          data = lag_data_after2010)'
+lm_roe_after2010 <- ivreg(roe~esg_e$lag_esg_e + esg_g$lag_esg_g  + marketcap_log  + dividend|  
+                            avg_e$lag_avg_esg_e + avg_g$lag_avg_esg_g + marketcap_log  + dividend, 
+                          data = lag_data_after2010)
+summary(lm_roe_after2010)
+summary_second_roe_after2010 <- summary(lm_roe_after2010)
+#coeftest(second_roe_after2010, vcov = vcocHC, type = "HC0")
+coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
+
+##roa
+'lm_roa_after2010 <- ivreg(roa~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                            avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                          data = lag_data_after2010)'
+lm_roa_after2010 <- ivreg(roa~esg_e$lag_esg_e + esg_g$lag_esg_g + marketcap_log  + dividend|  
+                            avg_e$lag_avg_esg_e + avg_g$lag_avg_esg_g + marketcap_log  + dividend, 
+                          data = lag_data_after2010)
+summary(lm_roa_after2010)
+summary_second_roa_after2010 <- summary(lm_roa_after2010)
+#coeftest(second_roa_after2010, vcov = vcocHC, type = "HC0")
+coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
+
+##eps
+'lm_eps_after2010 <- ivreg(eps~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                            avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                          data = lag_data_after2010)'
+lm_eps_after2010 <- ivreg(eps~esg_e$lag_esg_e + esg_g$lag_esg_g + marketcap_log  + dividend|  
+                            avg_e$lag_avg_esg_e + avg_g$lag_avg_esg_g + marketcap_log  + dividend, 
+                          data = lag_data_after2010)
+summary(lm_eps_after2010)
+summary_second_eps_after2010 <- summary(lm_eps_after2010)
+#coeftest(second_eps_after2010, vcov = vcocHC, type = "HC0")
+coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
+sink("lag_lm_after2010_eg.txt")
+bind_model <- stargazer(lm_roe_after2010, lm_roa_after2010, lm_eps_after2010, 
                         title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
                         model.names = TRUE)
 sink()
 ############################## 2002-2022 ################################################
 ##roe
-first_roe_without_na <- ivreg(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
-                               marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
-                             data = alldata_without_na)
-lm_roe_without_na <- lm(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
-                       data = alldata_without_na)
-summary(lm_roe_without_na)
-summary(first_roe_without_na)
-predicted_X <- fitted(first_roe_without_na)
-second_roe_without_na <- ivreg(roe~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
-summary(second_roe_without_na)
-summary_second_roe_without_na <- summary(second_roe_without_na)
-#coeftest(second_roe_without_na, vcov = vcocHC, type = "HC0")
+lm_roe_alldata <- ivreg(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                            avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                          data = alldata_without_na)
+summary(lm_roe_alldata)
+summary_second_roe_alldata <- summary(lm_roe_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
 coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
 se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
 # 重新计算 Hausman 统计量
-hausman_statistic_roe_without_na <- (coef(first_roe_without_na) - coef_second_roe) / sqrt(abs(diag(vcov(first_roe_without_na)) - diag(vcov(second_roe_without_na))))# 计算 P 值
-p_value_roe_without_na <- 2 * (1 - pnorm(abs(hausman_statistic_roe_without_na)))
-print(cbind(hausman_statistic_roe, p_value_roe))
+"用了ivreg表示是直接跑了兩階段回歸，并且不需要做hausmantest"
+'hausman_statistic_roe_alldata <- (coef(first_roe_alldata) - coef_second_roe) / sqrt(abs(diag(vcov(first_roe_alldata)) - diag(vcov(second_roe_alldata))))# 计算 P 值
+p_value_roe_alldata <- 2 * (1 - pnorm(abs(hausman_statistic_roe_alldata)))
+print(cbind(hausman_statistic_roe, p_value_roe))'
 
 ##roa
-first_roa_without_na <- ivreg(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
-                               marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
-                             data = alldata_without_na)
-lm_roa_without_na <- lm(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
-                       data = alldata_without_na)
-summary(lm_roa_without_na)
-summary(first_roa_without_na)
-predicted_X <- fitted(first_roa_without_na)
-second_roa_without_na <- ivreg(roa~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
-summary(second_roa_without_na)
-summary_second_roa_without_na <- summary(second_roa_without_na)
-#coeftest(second_roa_without_na, vcov = vcocHC, type = "HC0")
+lm_roa_alldata <- ivreg(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                            avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                          data = alldata_without_na)
+summary(lm_roa_alldata)
+summary_second_roa_alldata <- summary(lm_roa_alldata)
+#coeftest(second_roa_alldata, vcov = vcocHC, type = "HC0")
 coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
 se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
 # 重新计算 Hausman 统计量
-hausman_statistic_roa_without_na <- (coef(first_roa_without_na) - coef_second_roa) / sqrt(abs(diag(vcov(first_roa_without_na)) - diag(vcov(second_roa_without_na))))# 计算 P 值
-p_value_roa_without_na <- 2 * (1 - pnorm(abs(hausman_statistic_roa_without_na)))
-print(cbind(hausman_statistic_roa, p_value_roa))
+'hausman_statistic_roa_alldata <- (coef(first_roa_alldata) - coef_second_roa) / sqrt(abs(diag(vcov(first_roa_alldata)) - diag(vcov(second_roa_alldata))))# 计算 P 值
+p_value_roa_alldata <- 2 * (1 - pnorm(abs(hausman_statistic_roa_alldata)))
+print(cbind(hausman_statistic_roa, p_value_roa))'
 
 ##eps
-first_eps_without_na <- ivreg(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  E_log + S_log + G_log + 
-                               marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
-                             data = alldata_without_na)
-lm_eps_without_na <- lm(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, 
-                       data = alldata_without_na)
-summary(lm_eps_without_na)
-summary(first_eps_without_na)
-predicted_X <- fitted(first_eps_without_na)
-second_eps_without_na <- ivreg(eps~predicted_X+esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum, data = alldata_without_na)
-summary(second_eps_without_na)
-summary_second_eps_without_na <- summary(second_eps_without_na)
-#coeftest(second_eps_without_na, vcov = vcocHC, type = "HC0")
+lm_eps_alldata <- ivreg(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                            avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                          data = alldata_without_na)
+summary(lm_eps_alldata)
+summary_second_eps_alldata <- summary(lm_eps_alldata)
+#coeftest(second_eps_after2010, vcov = vcocHC, type = "HC0")
 coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
 se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
-# 重新计算 Hausman 统计量
-hausman_statistic_eps_without_na <- (coef(first_eps_without_na) - coef_second_eps) / sqrt(abs(diag(vcov(first_eps_without_na)) - diag(vcov(second_eps_without_na))))# 计算 P 值
-p_value_eps_without_na <- 2 * (1 - pnorm(abs(hausman_statistic_eps_without_na)))
-print(cbind(hausman_statistic_eps, p_value_eps))
 
-# 输出结果
-hausman_statistic_roe_without_na <- round(hausman_statistic_roe_without_na, 4)
-p_value_roe <- round(p_value_roe, 4)
-hausman_statistic_roa_without_nae <- round(hausman_statistic_roa_without_na, 4)
-p_value_roa <- round(p_value_roa, 4)
-hausman_statistic_eps_without_na <- round(hausman_statistic_eps_without_na, 4)
-p_value_eps <- round(p_value_eps, 4)
-hausman_statistic <- cbind(hausman_statistic_roe_without_na, p_value_roe, hausman_statistic_roa_without_na, p_value_roa, hausman_statistic_eps_without_na, p_value_eps)
-print(hausman_statistic)
 setwd( "C:/Users/user/Downloads")
-sink("hausman_statistic_alltime.txt")
-bind_model <- stargazer(hausman_statistic, 
-                        title="Results", digits = 5,  header = TRUE, type = "text", report = "vc*p",
-                        model.names = TRUE)
-sink()
-
 sink("lm_alltime.txt")
-bind_model <- stargazer(lm_roe_without_na, lm_roa_without_na, lm_eps_without_na, 
-                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
-                        model.names = TRUE)
-sink()
-sink("第一階段_alltime.txt")
-bind_model <- stargazer(first_roe_without_na, first_roa_without_na, first_eps_without_na,
-                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
-                        model.names = TRUE)
-sink()
-sink("第二階段_statistic_alltime.txt")
-bind_model <- stargazer(second_roe_without_na, second_roa_without_na, second_eps_without_na, 
+bind_model <- stargazer(lm_roe_alldata, lm_roa_alldata, lm_eps_alldata, 
                         title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
                         model.names = TRUE)
 sink()
 
+#lag model
+##roe
+lm_roe_alldata <- ivreg(roe~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                          avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                        data = lag_data)
+summary(lm_roe_alldata)
+summary_second_roe_alldata <- summary(lm_roe_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_roe <- summary_second_roe$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_second_roe$coef[, 2]    # 提取标准误差
+
+##roa
+lm_roa_alldata <- ivreg(roa~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                          avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                        data = lag_data)
+summary(lm_roa_alldata)
+summary_second_roa_alldata <- summary(lm_roa_alldata)
+#coeftest(second_roa_alldata, vcov = vcocHC, type = "HC0")
+coef_second_roa <- summary_second_roa$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_second_roa$coef[, 2]    # 提取标准误差
+
+##eps
+lm_eps_alldata <- ivreg(eps~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                          avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                        data = lag_data)
+summary(lm_eps_alldata)
+summary_second_eps_alldata <- summary(lm_eps_alldata)
+#coeftest(second_eps_after2010, vcov = vcocHC, type = "HC0")
+coef_second_eps <- summary_second_eps$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_second_eps$coef[, 2]    # 提取标准误差
+
+setwd( "C:/Users/user/Downloads")
+sink("lag_lm_alltime.txt")
+bind_model <- stargazer(lm_roe_alldata, lm_roa_alldata, lm_eps_alldata, 
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+############################## 绩效排序分群 前30% ################################################
+top_30roe_percent_data <- data.frame()
+top_30roa_percent_data <- data.frame()
+top_30eps_percent_data <- data.frame()
+
+for (year in unique(alldata_without_na$year)) {
+  current_year_data <- alldata_without_na[alldata_without_na$year == year, ]
+  
+  roe_threshold <- quantile(current_year_data$roe, 0.7)
+  top_30roe_percent_data <- bind_rows(top_30roe_percent_data, current_year_data[current_year_data$roe >= roe_threshold, ])
+  roa_threshold <- quantile(current_year_data$roa, 0.7)
+  top_30roa_percent_data <- bind_rows(top_30roa_percent_data, current_year_data[current_year_data$roa >= roa_threshold, ])
+  eps_threshold <- quantile(current_year_data$roa, 0.7)
+  top_30eps_percent_data <- bind_rows(top_30eps_percent_data, current_year_data[current_year_data$eps >= eps_threshold, ])
+}
+
+low_30roe_percent_data <- data.frame()
+low_30roa_percent_data <- data.frame()
+low_30eps_percent_data <- data.frame()
+for (year in unique(alldata_without_na$year)) {
+  current_year_data <- alldata_without_na[alldata_without_na$year == year, ]
+  
+  roe_threshold <- quantile(current_year_data$roe, 0.3)
+  low_30roe_percent_data <- bind_rows(low_30roe_percent_data, current_year_data[current_year_data$roe <= roe_threshold, ])
+  roa_threshold <- quantile(current_year_data$roa, 0.3)
+  low_30roa_percent_data <- bind_rows(low_30roa_percent_data, current_year_data[current_year_data$roa <= roa_threshold, ])
+  eps_threshold <- quantile(current_year_data$roa, 0.3)
+  low_30eps_percent_data <- bind_rows(low_30eps_percent_data, current_year_data[current_year_data$eps >= eps_threshold, ])
+}
+
+#導出資料沒整理
+file_path <- "C:/Users/user/Downloads/top_30roe_percent_data.xlsx"
+write.xlsx(top_30roe_percent_data, file_path, digits = 2)
+file_path <- "C:/Users/user/Downloads/top_30roa_percent_data.xlsx"
+write.xlsx(top_30roa_percent_data, file_path, digits = 2)
+file_path <- "C:/Users/user/Downloads/top_30eps_percent_data.xlsx"
+write.xlsx(top_30eps_percent_data, file_path, digits = 2)
+file_path <- "C:/Users/user/Downloads/low_30roe_percent_data.xlsx"
+write.xlsx(low_30roe_percent_data, file_path, digits = 2)
+file_path <- "C:/Users/user/Downloads/low_30roa_percent_data.xlsx"
+write.xlsx(low_30roa_percent_data, file_path, digits = 2)
+file_path <- "C:/Users/user/Downloads/low_30eps_percent_data.xlsx"
+write.xlsx(low_30eps_percent_data, file_path, digits = 2)
+
+
+'##滯後一期財務績效
+alldata_without_na <- arrange(alldata_without_na, companycode, year)
+# 使用 lag 函数将每个变量向后延后一期
+company_list <- split(alldata_without_na, f = alldata_without_na$companycode)
+lag_data <- NULL
+for (i in 1:length(company_list)) {
+  temlist <- company_list[[i]]
+  lag_roa <- c(NA, temlist$roa) %>% as.data.frame()
+  lag_roa <- lag_roa[c(1:(nrow(lag_roa)-1)),] %>% as.data.frame()
+  lag_roe <- c(NA, temlist$roe) %>% as.data.frame()
+  lag_roe <- lag_roe[c(1:(nrow(lag_roe)-1)),] %>% as.data.frame()
+  lag_eps <- c(NA, temlist$eps) %>% as.data.frame()
+  lag_eps <- lag_eps[c(1:(nrow(lag_eps)-1)),] %>% as.data.frame()
+  temlist$roa <- lag_roa
+  temlist$roe <- lag_roe
+  temlist$eps <- lag_eps
+  lag_data <- rbind(lag_data, temlist)
+}
+lag_data <- na.omit(lag_data)
+colnames(lag_data$roa) = "roa"
+colnames(lag_data$roe) = "roe"
+colnames(lag_data$eps) = "eps"'
+
+# 筛选 ROE、ROA 和 EPS 的前 30% 数据
+top_30roe_percent_data_lag <- lag_data %>%
+  filter(!is.na(roe)) %>%
+  filter(roe >= quantile(roe, 0.7, na.rm = TRUE))
+top_30roa_percent_data_lag <- lag_data %>%
+  filter(!is.na(roa)) %>%
+  filter(roa >= quantile(roa, 0.7, na.rm = TRUE))
+top_30eps_percent_data_lag <- lag_data %>%
+  filter(!is.na(eps)) %>%
+  filter(eps >= quantile(eps, 0.7, na.rm = TRUE))
+##top low lag資料待驗證
+low_30roe_percent_data_lag <- lag_data %>%
+  filter(!is.na(roe)) %>%
+  filter(roe <= quantile(roe, 0.3, na.rm = TRUE))
+low_30roa_percent_data_lag <- lag_data %>%
+  filter(!is.na(roa)) %>%
+  filter(roa <= quantile(roa, 0.3, na.rm = TRUE))
+low_30eps_percent_data_lag <- lag_data %>%
+  filter(!is.na(eps)) %>%
+  filter(eps <= quantile(eps, 0.3, na.rm = TRUE))
+
+##績效模型
+'top_30roe_percent_data
+top_30roa_percent_data
+top_30eps_percent_data'
+##roe
+'lm_top30roe_alldata <- ivreg(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                          avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                        data = top_30roe_percent_data)'
+lm_top30roe_alldata <- ivreg(roe~esg_e + esg_g  + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                          avg_e + avg_g  + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                        data = top_30roe_percent_data)
+summary(lm_top30roe_alldata)
+summary_lm_top30roe_alldata <- summary(lm_top30roe_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_roe <- summary_lm_top30roe_alldata$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_lm_top30roe_alldata$coef[, 2]    # 提取标准误差
+
+'lm_top30roa_alldata <- ivreg(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                               avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = top_30roa_percent_data)'
+lm_top30roa_alldata <- ivreg(roa~esg_e + esg_g  + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                               avg_e + avg_g  + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = top_30roa_percent_data)
+summary(lm_top30roa_alldata)
+summary_lm_top30roa_alldata <- summary(lm_top30roa_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_roa <- summary_lm_top30roa_alldata$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_lm_top30roa_alldata$coef[, 2]    # 提取标准误差
+
+'lm_top30eps_alldata <- ivreg(eps~esg_e + esg_s + esg_g  + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                               avg_e + avg_s + avg_g  + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = top_30eps_percent_data)'
+lm_top30eps_alldata <- ivreg(eps~esg_e + esg_g  + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                               avg_e + avg_g  + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = top_30eps_percent_data)
+summary(lm_top30eps_alldata)
+summary_lm_top30eps_alldata <- summary(lm_top30eps_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_eps <- summary_lm_top30eps_alldata$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_lm_top30eps_alldata$coef[, 2]    # 提取标准误差
+
+setwd( "C:/Users/user/Downloads")
+sink("lm_top30quantile_summary.txt")
+bind_model <- stargazer(lm_top30roe_alldata, lm_top30roa_alldata, lm_top30eps_alldata, 
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+##low30
+##roe
+lm_low30roe_alldata <- ivreg(roe~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                               avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = low_30roe_percent_data)
+summary(lm_low30roe_alldata)
+summary_lm_low30roe_alldata <- summary(lm_low30roe_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_roe <- summary_lm_low30roe_alldata$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_lm_low30roe_alldata$coef[, 2]    # 提取标准误差
+
+lm_low30roa_alldata <- ivreg(roa~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                               avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = low_30roa_percent_data)
+summary(lm_low30roa_alldata)
+summary_lm_low30roa_alldata <- summary(lm_low30roa_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_roa <- summary_lm_low30roa_alldata$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_lm_low30roa_alldata$coef[, 2]    # 提取标准误差
+
+lm_low30eps_alldata <- ivreg(eps~esg_e + esg_s + esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                               avg_e + avg_s + avg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = low_30eps_percent_data)
+summary(lm_low30eps_alldata)
+summary_lm_low30eps_alldata <- summary(lm_low30eps_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_eps <- summary_lm_low30eps_alldata$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_lm_low30eps_alldata$coef[, 2]    # 提取标准误差
+
+setwd( "C:/Users/user/Downloads")
+sink("lm_low30quantile_summary.txt")
+bind_model <- stargazer(lm_low30roe_alldata, lm_low30roa_alldata, lm_low30eps_alldata, 
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+##滯後一期績效 top
+'top_30roe_percent_data_lag
+top_30roa_percent_data_lag
+top_30eps_percent_data_lag'
+##roe
+'lm_top30lag_roe_alldata <- ivreg(roe~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                                   avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                                 data = top_30roe_percent_data_lag)'
+lm_top30lag_roe_alldata <- ivreg(roe~esg_e$lag_esg_e  + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                                   avg_e$lag_avg_esg_e + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = top_30roe_percent_data_lag)
+summary(lm_top30lag_roe_alldata)
+summary_lm_top30lag_roe_alldata <- summary(lm_top30lag_roe_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_roe <- summary_lm_top30lag_roe_alldata$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_lm_top30lag_roe_alldata$coef[, 2]    # 提取标准误差
+
+'lm_top30lag_roa_alldata <- ivreg(roa~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                                   avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = top_30roa_percent_data_lag)'
+lm_top30lag_roa_alldata <- ivreg(roa~esg_e$lag_esg_e +  esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                                   avg_e$lag_avg_esg_e  + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = top_30roa_percent_data_lag)
+summary(lm_top30lag_roa_alldata)
+summary_lm_top30lag_roa_alldata <- summary(lm_top30lag_roa_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_roa <- summary_lm_top30lag_roa_alldata$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_lm_top30lag_roa_alldata$coef[, 2]    # 提取标准误差
+
+'lm_top30lag_eps_alldata <- ivreg(eps~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                                   avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = top_30eps_percent_data_lag)'
+lm_top30lag_eps_alldata <- ivreg(eps~esg_e$lag_esg_e +  esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                                   avg_e$lag_avg_esg_e + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                             data = top_30eps_percent_data_lag)
+summary(lm_top30lag_eps_alldata)
+summary_lm_top30lag_eps_alldata <- summary(lm_top30lag_eps_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_eps <- summary_lm_top30lag_eps_alldata$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_lm_top30lag_eps_alldata$coef[, 2]    # 提取标准误差
+
+setwd( "C:/Users/user/Downloads")
+sink("lm_top30lag_quantile_summary.txt")
+bind_model <- stargazer(lm_top30lag_roe_alldata, lm_top30lag_roa_alldata, lm_top30lag_eps_alldata, 
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
+
+##之後一期績效 low
+##roe
+'lm_low30lag_roe_alldata <- ivreg(roe~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                                   avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                                 data = low_30roe_percent_data_lag)'
+lm_low30lag_roe_alldata <- ivreg(roe~esg_e$lag_esg_e  + esg_g$lag_esg_g + marketcap_log  + dividend|  
+                                   avg_e$lag_avg_esg_e  + avg_g$lag_avg_esg_g + marketcap_log  + dividend, 
+                                 data = low_30roe_percent_data_lag)
+summary(lm_low30lag_roe_alldata)
+summary_lm_low30lag_roe_alldata <- summary(lm_low30lag_roe_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_roe <- summary_lm_low30lag_roe_alldata$coef[, 1]  # 提取估计系数
+se_second_roe <- summary_lm_low30lag_roe_alldata$coef[, 2]    # 提取标准误差
+
+'lm_low30lag_roa_alldata <- ivreg(roa~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                                   avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                                 data = low_30roa_percent_data_lag)'
+lm_low30lag_roa_alldata <- ivreg(roa~esg_e$lag_esg_e  + esg_g$lag_esg_g + marketcap_log  + dividend|  
+                                   avg_e$lag_avg_esg_e  + avg_g$lag_avg_esg_g + marketcap_log  + dividend, 
+                                 data = low_30roa_percent_data_lag)
+summary(lm_low30lag_roa_alldata)
+summary_lm_low30lag_roa_alldata <- summary(lm_low30lag_roa_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_roa <- summary_lm_low30lag_roa_alldata$coef[, 1]  # 提取估计系数
+se_second_roa <- summary_lm_low30lag_roa_alldata$coef[, 2]    # 提取标准误差
+
+'lm_low30lag_eps_alldata <- ivreg(eps~esg_e$lag_esg_e + esg_s$lag_esg_s + esg_g$lag_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum |  
+                                   avg_e$lag_avg_esg_e + avg_s$lag_avg_esg_s + avg_g$lag_avg_esg_g + marketcap_log + debt_ratio + dividend + SMB + HML + RMW + CMA + Momentum , 
+                                 data = low_30eps_percent_data_lag)'
+lm_low30lag_eps_alldata <- ivreg(eps~esg_e$lag_esg_e  + esg_g$lag_esg_g + marketcap_log  + dividend|  
+                                   avg_e$lag_avg_esg_e  + avg_g$lag_avg_esg_g + marketcap_log  + dividend, 
+                                 data = low_30eps_percent_data_lag)
+summary(lm_low30lag_eps_alldata)
+summary_lm_low30lag_eps_alldata <- summary(lm_low30lag_eps_alldata)
+#coeftest(second_roe_alldata, vcov = vcocHC, type = "HC0")
+coef_second_eps <- summary_lm_low30lag_eps_alldata$coef[, 1]  # 提取估计系数
+se_second_eps <- summary_lm_low30lag_eps_alldata$coef[, 2]    # 提取标准误差
+
+setwd( "C:/Users/user/Downloads")
+sink("lm_low30lag_quantile_summary_eg.txt")
+bind_model <- stargazer(lm_low30lag_roe_alldata, lm_low30lag_roa_alldata, lm_low30lag_eps_alldata, 
+                        title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
+                        model.names = TRUE)
+sink()
 '############################## 产业分群 工业 ################################################
 head(alldata_工业)
 head(alldata_金融)
