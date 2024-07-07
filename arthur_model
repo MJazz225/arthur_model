@@ -349,7 +349,6 @@ aic_data <- cbind(aic_roe, aic_roa, aic_eps)
 colnames(aic_data) <- c('aic_roe', 'aic_roa', 'aic_eps')
 write.csv(aic_data, "aic test.csv", row.names = FALSE)
 
-sink("granger_test.txt")
 bind_model <- stargazer(granger_roe, granger_roa, granger_eps,
                         title="Results", digits = 3,  header = TRUE, type = "text", report = "vc*p",
                         model.names = TRUE)
@@ -368,10 +367,10 @@ sink()
 
 ##双向因果检定
 granger_roe_reverse <- grangertest(data_esg$esg~data_esg$roe, data = data_esg, order = 9)
-granger_roe_reverse
 granger_roa_reverse <- grangertest(data_esg$esg~data_esg$roa, data = data_esg, order = 1)
-granger_roa_reverse
 granger_eps_reverse <- grangertest(data_esg$esg~data_esg$eps, data = data_esg, order = 1) #'都不顯著'
+granger_roe_reverse
+granger_roa_reverse
 granger_eps_reverse
 sink("granger_reverse.txt") 
 bind_model <- stargazer(granger_roe_reverse, granger_roa_reverse,  granger_eps_reverse,
